@@ -1,0 +1,10 @@
+--- src/pages/Watch.tsx
++++ src/pages/Watch.tsx
+@@ -163,6 +163,7 @@
+               <div className="px-4 py-2 bg-gray-800/50 text-gray-500 rounded-lg font-bold text-sm cursor-not-allowed">
+                 Previous Episode
+               </div>
++            )}
+             {/* Audio Type Selector */}
+             <div className="flex items-center bg-gray-800 rounded-lg p-1">
+               <button

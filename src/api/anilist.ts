@@ -1,6 +1,6 @@
 export const ANILIST_API_URL = 'https://graphql.anilist.co';
 
-export async function fetchAnilist<T = any>(query: string, variables: any = {}, retries = 3): Promise<T> {
+export async function fetchAnilist<T = any>(query: string, variables: any = {}, retries = 5): Promise<T> {
   for (let i = 0; i < retries; i++) {
     try {
       const response = await fetch(ANILIST_API_URL, {
@@ -18,7 +18,8 @@ export async function fetchAnilist<T = any>(query: string, variables: any = {}, 
       }
       if (!response.ok) {
         if (response.status === 429) {
-          await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+          const delay = parseInt(response.headers.get('Retry-After') || '0') * 1000 || (1000 * Math.pow(2, i) + Math.random() * 1000);
+          await new Promise(r => setTimeout(r, delay));
           continue;
         }
         throw new Error('HTTP Error ' + response.status);
@@ -26,7 +27,7 @@ export async function fetchAnilist<T = any>(query: string, variables: any = {}, 
       return json.data;
     } catch (err: any) {
       if (i === retries - 1) throw err;
-      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i) + Math.random() * 1000));
     }
   }
   throw new Error('Failed to fetch from AniList API');
@@ -89,7 +90,9 @@ export const AIRING_SCHEDULE_QUERY = `
 export const MEDIA_FRAGMENT = `
   fragment MediaFragment on Media {
     id
+    idMal
     type
+    format
     title {
       romaji
       english

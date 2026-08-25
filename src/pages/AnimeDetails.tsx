@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchAnilist, ANIME_DETAILS_QUERY } from '../api/anilist';
 import { AnimeMedia } from '../types';
-import { Play, Star, Calendar, Info, ExternalLink, ArrowDownUp, LayoutGrid, List as ListIcon, PlayCircle } from 'lucide-react';
+import { Play, Star, Calendar, Info, ExternalLink, ArrowDownUp, LayoutGrid, List as ListIcon, PlayCircle, MonitorPlay } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { MarqueeText } from '../components/MarqueeText';
 import { getAnimeListStatus, addOrUpdateToList, removeFromList, MyListStatus } from '../utils/myList';
@@ -55,16 +55,30 @@ export default function AnimeDetails() {
   const [sortDesc, setSortDesc] = useState(false);
   const [isListView, setIsListView] = useState(false);
   const [listStatus, setListStatus] = useState<MyListStatus | null>(null);
+  const [imdbId, setImdbId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadDetails = async () => {
       setError('');
       try {
         const data = await fetchAnilist(ANIME_DETAILS_QUERY, { id: Number(id) });
+
         if (data?.Media) {
           setAnime(data.Media);
           setListStatus(getAnimeListStatus(Number(id)));
+          
+          fetch(`/api/mapping/${id}`)
+            .then(res => res.json())
+            .then(mapping => {
+              if (mapping && mapping.imdb_id && mapping.imdb_id.length > 0) {
+                // Sometimes it's an array, sometimes maybe a string, handle safely
+                const iId = Array.isArray(mapping.imdb_id) ? mapping.imdb_id[0] : mapping.imdb_id;
+                setImdbId(iId);
+              }
+            })
+            .catch(err => console.error("Failed to fetch mapping", err));
         } else {
+
           setError('Anime not found.');
         }
       } catch (err) {
@@ -165,7 +179,7 @@ export default function AnimeDetails() {
               Watch Episode 1
             </Link>
             
-            <div className="relative">
+            <div className="relative mb-4">
               <select
                 value={listStatus || ''}
                 onChange={handleListStatusChange}
@@ -182,6 +196,40 @@ export default function AnimeDetails() {
                 ▼
               </div>
             </div>
+
+            <div className="flex flex-col gap-2">
+              <a
+                href={`https://anilist.co/anime/${anime.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full bg-[#02A9FF]/10 hover:bg-[#02A9FF]/20 text-[#02A9FF] border border-[#02A9FF]/30 font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm"
+              >
+                <ExternalLink size={16} />
+                AniList
+              </a>
+              {anime.idMal && (
+                <a
+                  href={`https://myanimelist.net/anime/${anime.idMal}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-[#2E51A2]/10 hover:bg-[#2E51A2]/20 text-[#5383E8] border border-[#2E51A2]/30 font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm"
+                >
+                  <ExternalLink size={16} />
+                  MyAnimeList
+                </a>
+              )}
+              {imdbId && (
+                <a
+                  href={`https://www.imdb.com/title/${imdbId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-[#F5C518]/10 hover:bg-[#F5C518]/20 text-[#F5C518] border border-[#F5C518]/30 font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm"
+                >
+                  <ExternalLink size={16} />
+                  IMDb
+                </a>
+              )}
+            </div>
           </div>
 
           {/* Right Column - Details */}
@@ -194,6 +242,11 @@ export default function AnimeDetails() {
               <div className="flex items-center gap-1.5 text-primary">
                 <Star size={18} fill="currentColor" />
                 <span className="text-lg">{anime.averageScore}%</span>
+              </div>
+              <div className="w-1.5 h-1.5 rounded-full bg-gray-600" />
+              <div className="flex items-center gap-1.5">
+                <MonitorPlay size={18} />
+                <span>{anime.format?.replace(/_/g, ' ') || anime.type || 'ANIME'}</span>
               </div>
               <div className="w-1.5 h-1.5 rounded-full bg-gray-600" />
               <div className="flex items-center gap-1.5">

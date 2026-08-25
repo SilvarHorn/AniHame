@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Search, User, Tv, Menu, X } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import { fetchAnilist, SEARCH_ANIME_QUERY } from '../../api/anilist';
 import { AnimeMedia } from '../../types';
 
@@ -8,9 +9,34 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [previewResults, setPreviewResults] = useState<AnimeMedia[]>([]);
-  const [showPreview, setShowPreview] = useState(false);
-  const [avatar, setAvatar] = useState('');
+const [showPreview, setShowPreview] = useState(false);
+  const { profile, currentUser } = useAuth();
+  const [localAvatar, setLocalAvatar] = useState('');
+  const [localUsername, setLocalUsername] = useState('');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const loadLocalProfile = () => {
+      try {
+        const saved = localStorage.getItem('anime_profile');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.avatar) setLocalAvatar(parsed.avatar);
+          if (parsed.username) setLocalUsername(parsed.username);
+        }
+      } catch (e) {}
+    };
+    loadLocalProfile();
+    window.addEventListener('profile-updated', loadLocalProfile);
+    window.addEventListener('storage', loadLocalProfile);
+    return () => {
+      window.removeEventListener('profile-updated', loadLocalProfile);
+      window.removeEventListener('storage', loadLocalProfile);
+    };
+  }, []);
+
+  const displayAvatar = profile?.photoURL || localAvatar;
+  const displayUsername = profile?.username || localUsername || 'Profile';
   const location = useLocation();
 
   const getNavClass = (path: string) => {
@@ -23,28 +49,6 @@ export default function Navbar() {
     return `px-3 py-2 rounded-lg text-sm tracking-wide transition-colors ${isActive ? 'bg-primary/10 text-primary font-bold' : 'text-[#EDF1F5] font-bold hover:text-primary hover:bg-white/5'}`;
   };
 
-  useEffect(() => {
-    const loadProfile = () => {
-      try {
-        const saved = localStorage.getItem('anime_profile');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed.avatar) {
-            setAvatar(parsed.avatar);
-          }
-        }
-      } catch (e) {}
-    };
-
-    loadProfile();
-    window.addEventListener('storage', loadProfile);
-    window.addEventListener('profile-updated', loadProfile);
-
-    return () => {
-      window.removeEventListener('storage', loadProfile);
-      window.removeEventListener('profile-updated', loadProfile);
-    };
-  }, []);
 
   useEffect(() => {
     const fetchPreview = async () => {
@@ -125,12 +129,12 @@ export default function Navbar() {
               to="/profile"
               className="flex items-center gap-3 ml-2 group"
             >
-              {avatar ? (
-                <img src={avatar} alt="Profile" className="w-8 h-8 rounded-full object-cover border-2 border-gray-800 group-hover:border-primary transition-colors" />
+              {displayAvatar ? (
+                <img src={displayAvatar} alt="Profile" className="w-8 h-8 rounded-full object-cover border-2 border-gray-800 group-hover:border-primary transition-colors" />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center text-[10px] font-bold text-[#0B0C0F]">ME</div>
               )}
-              <span className="text-xs font-semibold text-[#EDF1F5] group-hover:text-primary transition-colors">Profile</span>
+              <span className="text-xs font-semibold text-[#EDF1F5] group-hover:text-primary transition-colors truncate max-w-[100px]">{displayUsername}</span>
             </Link>
           </div>
 
@@ -183,12 +187,12 @@ export default function Navbar() {
             onClick={() => setIsMobileMenuOpen(false)}
             className="w-full flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors border border-gray-700"
           >
-            {avatar ? (
-              <img src={avatar} alt="Profile" className="w-6 h-6 rounded-full object-cover" />
+            {displayAvatar ? (
+              <img src={displayAvatar} alt="Profile" className="w-6 h-6 rounded-full object-cover" />
             ) : (
               <User size={16} />
             )}
-            <span>Profile</span>
+            <span className="truncate max-w-[150px]">{displayUsername}</span>
           </Link>
         </div>
       )}

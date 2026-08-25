@@ -1,4 +1,5 @@
 import React from 'react';
+import { AuthProvider } from './contexts/AuthContext';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import Layout from './components/layout/Layout';
@@ -46,10 +47,12 @@ function AnimatedRoutes() {
 
 export default function App() {
   return (
+    <AuthProvider>
     <BrowserRouter>
       <Layout>
         <AnimatedRoutes />
       </Layout>
     </BrowserRouter>
+    </AuthProvider>
   );
 }

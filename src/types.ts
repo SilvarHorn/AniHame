@@ -17,7 +17,9 @@ export interface NextAiringEpisode {
 
 export interface AnimeMedia {
   id: number;
+  idMal?: number;
   type?: string;
+  format?: string;
   title: AnimeTitle;
   coverImage: AnimeCoverImage;
   bannerImage: string | null;
@@ -39,6 +41,7 @@ export interface AnimeMedia {
 
 export interface AiringSchedule {
   id: number;
+  
   airingAt: number;
   episode: number;
   media: AnimeMedia;

@@ -1,0 +1,17 @@
+{
+  "__version": "1.0",
+  "users": {
+    "$uid": {
+      "__doc__": "User profiles and preferences",
+      "__type__": "document",
+      "email": "string",
+      "displayName": "string",
+      "photoURL": "string",
+      "preferences": {
+        "__type__": "map",
+        "defaultServer": "string",
+        "defaultAudio": "string"
+      }
+    }
+  }
+}

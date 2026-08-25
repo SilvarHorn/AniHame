@@ -6,6 +6,23 @@ import ContinueWatching from '../components/home/ContinueWatching';
 import Timetable from '../components/home/Timetable';
 import { fetchAnilist, TRENDING_ANIME_QUERY, LATEST_UPDATED_ANIME_QUERY } from '../api/anilist';
 import { AnimeMedia } from '../types';
+import { motion } from 'motion/react';
+
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.15
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 30 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
+};
 
 export default function Home() {
   const [trending, setTrending] = useState<AnimeMedia[]>([]);
@@ -53,6 +70,7 @@ export default function Home() {
 
   // Fetch Latest
   useEffect(() => {
+    if (loading) return;
     let isMounted = true;
     const fetchLatest = async () => {
       setIsFetchingLatest(true);
@@ -80,7 +98,7 @@ export default function Home() {
     };
     fetchLatest();
     return () => { isMounted = false; };
-  }, [latestCountry, latestPage]);
+  }, [latestCountry, latestPage, loading]);
 
   // Reset page on country change
   useEffect(() => {
@@ -97,26 +115,48 @@ export default function Home() {
 
   return (
     <div className="flex flex-col">
-      <Banner trending={trending} />
-      <div className="flex-1 flex flex-col p-4 md:p-6 lg:px-8 gap-6 max-w-7xl mx-auto w-full">
-        <ContinueWatching />
+      {/* Banner is outside the stagger, it animates in as soon as it has data */}
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      >
+        <Banner trending={trending} />
+      </motion.div>
+
+      {/* Rest of the page waits for the Banner to finish loading before mounting and staggering in */}
+      {!loading && (
+        <motion.div 
+          className="flex-1 flex flex-col p-4 md:p-6 lg:px-8 gap-6 max-w-7xl mx-auto w-full"
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+        >
+        <motion.div variants={itemVariants}>
+          <ContinueWatching />
+        </motion.div>
         <div className="flex flex-col gap-8">
-          <LatestGrid 
-            latest={latest} 
-            country={latestCountry} 
-            onCountryChange={setLatestCountry}
-            page={latestPage}
-            hasNextPage={latestHasNext}
-            isLoading={isFetchingLatest}
-            onNextPage={() => setLatestPage(p => p + 1)}
-            onPrevPage={() => setLatestPage(p => Math.max(1, p - 1))}
-          />
-          <TrendingGrid trending={trending} country={trendingCountry} onCountryChange={setTrendingCountry} />
-          <div className="w-full">
+          <motion.div variants={itemVariants}>
+            <LatestGrid 
+              latest={latest} 
+              country={latestCountry} 
+              onCountryChange={setLatestCountry}
+              page={latestPage}
+              hasNextPage={latestHasNext}
+              isLoading={isFetchingLatest}
+              onNextPage={() => setLatestPage(p => p + 1)}
+              onPrevPage={() => setLatestPage(p => Math.max(1, p - 1))}
+            />
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <TrendingGrid trending={trending} country={trendingCountry} onCountryChange={setTrendingCountry} />
+          </motion.div>
+          <motion.div variants={itemVariants} className="w-full">
             <Timetable />
-          </div>
+          </motion.div>
         </div>
-      </div>
+        </motion.div>
+      )}
     </div>
   );
 }

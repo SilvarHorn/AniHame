@@ -1,22 +1,54 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, Link } from 'react-router-dom';
 import { fetchAnilist, ANIME_DETAILS_QUERY } from '../api/anilist';
 import { AnimeMedia } from '../types';
 import { saveProgress } from '../store/progress';
-import { ChevronLeft, ArrowDownUp, LayoutGrid, List as ListIcon, PlayCircle } from 'lucide-react';
+import { ChevronLeft, ChevronDown, ArrowDownUp, LayoutGrid, List as ListIcon, PlayCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useAuth } from '../contexts/AuthContext';
 import { MarqueeText } from '../components/MarqueeText';
 
 export default function Watch() {
+  const { profile } = useAuth();
   const { id, ep } = useParams();
   const [anime, setAnime] = useState<AnimeMedia | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [sortDesc, setSortDesc] = useState(false);
   const [isListView, setIsListView] = useState(false);
-  
+  const [episodeChunk, setEpisodeChunk] = useState(0);
+  const [audioType, setAudioType] = useState<'sub' | 'dub'>('sub');
+  const [serverType, setServerType] = useState<'ani' | 'mal' | 'vidsrc'>('ani');
+  const [imdbId, setImdbId] = useState<string | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (profile?.preferences) {
+      setServerType(profile.preferences.defaultServer);
+      setAudioType(profile.preferences.defaultAudio);
+    }
+  }, [profile]);
+
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const animeId = Number(id);
   const currentEp = Number(ep);
+
+  useEffect(() => {
+    if (currentEp) {
+      setEpisodeChunk(Math.floor((currentEp - 1) / 25));
+    }
+  }, [currentEp]);
 
   useEffect(() => {
     const loadDetails = async () => {
@@ -25,6 +57,16 @@ export default function Watch() {
         const data = await fetchAnilist(ANIME_DETAILS_QUERY, { id: animeId });
         if (data?.Media) {
           setAnime(data.Media);
+          // Fetch mapping
+          fetch(`/api/mapping/${animeId}`)
+            .then(res => res.json())
+            .then(mapping => {
+              if (mapping && mapping.imdb_id && mapping.imdb_id.length > 0) {
+                const iId = Array.isArray(mapping.imdb_id) ? mapping.imdb_id[0] : mapping.imdb_id;
+                setImdbId(iId);
+              }
+            })
+            .catch(err => console.error("Failed to fetch mapping", err));
           
           // Save to progress
           saveProgress({
@@ -64,12 +106,35 @@ export default function Watch() {
     episodeCount = anime.nextAiringEpisode.episode - 1;
   }
 
+  const chunkSize = 25;
+  const totalChunks = Math.ceil(episodeCount / chunkSize);
+  const chunks = Array.from({ length: totalChunks }, (_, i) => {
+    const start = i * chunkSize + 1;
+    const end = Math.min((i + 1) * chunkSize, episodeCount);
+    return { index: i, label: `${start}-${end}` };
+  });
+
   let episodes = Array.from({ length: Math.max(1, episodeCount) }, (_, i) => i + 1);
+  
+  // Filter by chunk *before* sorting so the chunks are stable
+  episodes = episodes.filter(ep => ep > episodeChunk * chunkSize && ep <= (episodeChunk + 1) * chunkSize);
+
   if (sortDesc) {
     episodes = episodes.reverse();
   }
 
-  const iframeUrl = `https://anilink.cc/watch/${animeId}/${currentEp}?variant=sub&primaryColor=%238AD7D0&secondaryColor=%23B2EFEA&iconColor=%23FFFFFF`;
+let iframeUrl = '';
+  if (serverType === 'vidsrc' && imdbId) {
+    if (anime?.format === 'MOVIE') {
+      iframeUrl = `https://vidsrc2.ru/embed/movie/${imdbId}`;
+    } else {
+      iframeUrl = `https://vidsrc2.ru/embed/tv/${imdbId}/1/${currentEp}`;
+    }
+  } else if (serverType === 'mal' && anime?.idMal) {
+    iframeUrl = `https://megaplay.buzz/stream/mal/${anime.idMal}/${currentEp}/${audioType}`;
+  } else {
+    iframeUrl = `https://megaplay.buzz/stream/ani/${animeId}/${currentEp}/${audioType}`;
+  }
 
   const episodeTitleMap = new Map<number, string>();
   const episodeThumbMap = new Map<number, string>();
@@ -132,7 +197,67 @@ export default function Watch() {
                 Previous Episode
               </div>
             )}
-              
+            <div className="flex items-center gap-2 sm:gap-4 flex-wrap justify-center">
+              {/* Server Selector */}
+              <div className="flex items-center bg-gray-800 rounded-lg p-1">
+                <button
+                  onClick={() => setServerType('ani')}
+                  className={cn(
+                    "px-3 sm:px-4 py-1.5 rounded-md text-sm font-bold transition-colors",
+                    serverType === 'ani' ? "bg-primary text-[#0B0C0F] shadow-sm" : "text-gray-400 hover:text-gray-200"
+                  )}
+                >
+                  MegaPlay AniList
+                </button>
+                <button
+                  onClick={() => setServerType('mal')}
+                  disabled={!anime?.idMal}
+                  className={cn(
+                    "px-3 sm:px-4 py-1.5 rounded-md text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+                    serverType === 'mal' ? "bg-primary text-[#0B0C0F] shadow-sm" : "text-gray-400 hover:text-gray-200"
+                  )}
+                  title={!anime?.idMal ? "MAL ID not available for this anime" : undefined}
+                >
+                  MegaPlay MAL
+                </button>
+                <button
+                  onClick={() => setServerType('vidsrc')}
+                  disabled={!imdbId}
+                  className={cn(
+                    "px-3 sm:px-4 py-1.5 rounded-md text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+                    serverType === 'vidsrc' ? "bg-primary text-[#0B0C0F] shadow-sm" : "text-gray-400 hover:text-gray-200"
+                  )}
+                  title={!imdbId ? "IMDb ID not available for this anime" : undefined}
+                >
+                  VidSrc
+                </button>
+              </div>
+
+              {/* Audio Type Selector */}
+              {serverType !== 'vidsrc' && (
+                <div className="flex items-center bg-gray-800 rounded-lg p-1">
+                  <button
+                    onClick={() => setAudioType('sub')}
+                    className={cn(
+                      "px-3 sm:px-4 py-1.5 rounded-md text-sm font-bold transition-colors",
+                      audioType === 'sub' ? "bg-primary text-[#0B0C0F] shadow-sm" : "text-gray-400 hover:text-gray-200"
+                    )}
+                  >
+                    Sub
+                  </button>
+                  <button
+                    onClick={() => setAudioType('dub')}
+                    className={cn(
+                      "px-3 sm:px-4 py-1.5 rounded-md text-sm font-bold transition-colors",
+                      audioType === 'dub' ? "bg-primary text-[#0B0C0F] shadow-sm" : "text-gray-400 hover:text-gray-200"
+                    )}
+                  >
+                    Dub
+                  </button>
+                </div>
+              )}
+            </div>
+
             {currentEp < Math.max(1, episodeCount) ? (
               <Link
                 to={`/watch/${animeId}/${currentEp + 1}`}
@@ -174,8 +299,42 @@ export default function Watch() {
             </div>
           </div>
           
+          {totalChunks > 1 && (
+            <div className="mb-4 relative" ref={dropdownRef}>
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="w-full flex items-center justify-between bg-gray-800 border border-white/5 text-gray-300 rounded-lg p-2.5 text-sm font-medium hover:bg-gray-700 transition-colors"
+              >
+                <span>Episodes {chunks.find(c => c.index === episodeChunk)?.label}</span>
+                <ChevronDown size={16} className={cn("transition-transform", isDropdownOpen && "rotate-180")} />
+              </button>
+              
+              {isDropdownOpen && (
+                <div className="mt-2 p-2 bg-gray-800 border border-white/5 rounded-lg shadow-xl grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-64 overflow-y-auto custom-scrollbar">
+                  {chunks.map(chunk => (
+                    <button
+                      key={chunk.index}
+                      onClick={() => {
+                        setEpisodeChunk(chunk.index);
+                        setIsDropdownOpen(false);
+                      }}
+                      className={cn(
+                        "px-2 py-1.5 text-xs font-semibold rounded-lg border transition-all text-center",
+                        episodeChunk === chunk.index
+                          ? "bg-primary border-primary text-white"
+                          : "bg-gray-900 border-white/5 text-gray-400 hover:bg-gray-700 hover:text-gray-200"
+                      )}
+                    >
+                      {chunk.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          
           <div className={cn(
-            "gap-2 overflow-y-auto custom-scrollbar pr-2 lg:max-h-[calc(100vh-12rem)] pb-4",
+            "gap-2 overflow-y-auto custom-scrollbar px-1 lg:max-h-[calc(100vh-12rem)] pb-4",
             isListView 
               ? "flex flex-col gap-3" 
               : "grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-5"
@@ -186,11 +345,11 @@ export default function Watch() {
                 key={epNum}
                 to={`/watch/${anime.id}/${epNum}`}
                 className={cn(
-                  "flex items-center gap-4 bg-gray-800 hover:bg-gray-700 hover:border-primary/50 border rounded-xl p-3 font-bold text-sm text-gray-300 transition-all shadow-lg group relative overflow-hidden",
+                  "flex items-center gap-4 bg-gray-800 hover:bg-gray-700 hover:border-primary/50 border rounded-xl p-3 lg:min-h-[100px] lg:p-4 font-bold text-sm text-gray-300 transition-all shadow-lg group relative overflow-hidden",
                   epNum === currentEp ? "border-primary/50 ring-1 ring-primary/50" : "border-white/5"
                 )}
               >
-                <div className="w-24 sm:w-28 aspect-video flex-shrink-0 relative rounded-lg overflow-hidden bg-gray-900">
+                <div className="w-24 sm:w-32 lg:w-40 aspect-video flex-shrink-0 relative rounded-lg overflow-hidden bg-gray-900">
                   <img 
                     src={episodeThumbMap.get(epNum) || anime.bannerImage || anime.coverImage.extraLarge || anime.coverImage.large} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 

@@ -1,10 +1,11 @@
+const fs = require('fs');
 
+const content = `
 import React, { useState, useEffect, useRef } from 'react';
 import { User, LogOut, Save, Mail, Key, Edit3, Camera } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { auth, googleProvider, db } from '../lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
-import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
+import { auth, googleProvider } from '../lib/firebase';
+import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import AnimeCard from '../components/ui/AnimeCard';
 import { MyListStatus, getMyList, MyListItem } from '../utils/myList';
 import { cn } from '../lib/utils';
@@ -23,8 +24,6 @@ export default function Profile() {
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [authError, setAuthError] = useState('');
   
@@ -91,26 +90,11 @@ export default function Profile() {
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
-    
-    if (authMode === 'register') {
-      if (!username.trim()) {
-        setAuthError('Username is required for registration.');
-        return;
-      }
-      if (password !== confirmPassword) {
-        setAuthError('Passwords do not match.');
-        return;
-      }
-    }
-
     try {
       if (authMode === 'login') {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
-        const userCred = await createUserWithEmailAndPassword(auth, email, password);
-        await updateProfile(userCred.user, { displayName: username });
-        const docRef = doc(db, 'users', userCred.user.uid);
-        await setDoc(docRef, { displayName: username }, { merge: true });
+        await createUserWithEmailAndPassword(auth, email, password);
       }
     } catch (err: any) {
       setAuthError(err.message || 'Authentication failed');
@@ -133,22 +117,9 @@ export default function Profile() {
     setGradColor2(c2);
     let str = '';
     if (t === 'solid') str = '';
-    else if (t === 'linear') str = `linear-gradient(${d}, ${c1}, ${c2})`;
-    else str = `radial-gradient(${d}, ${c1}, ${c2})`;
+    else if (t === 'linear') str = \`linear-gradient(\${d}, \${c1}, \${c2})\`;
+    else str = \`radial-gradient(\${d}, \${c1}, \${c2})\`;
     setBgGradient(str);
-  };
-
-  const updateCustomGradient = (field: 'type' | 'dir' | 'c1' | 'c2', val: string) => {
-    let t = gradType;
-    let d = gradDir;
-    let c1 = gradColor1;
-    let c2 = gradColor2;
-    if (field === 'type') t = val;
-    if (field === 'dir') d = val;
-    if (field === 'c1') c1 = val;
-    if (field === 'c2') c2 = val;
-    updateGradient(t, d, c1, c2);
-    if (!isEditing) setIsEditing(true);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -213,65 +184,23 @@ export default function Profile() {
               <p className="text-gray-400">You can customize your profile and settings here, but <strong className="text-white">preferences will not be saved</strong> across devices unless you log in.</p>
             </div>
             <div className="w-full md:w-auto">
-              <form onSubmit={handleEmailAuth} className="flex flex-col items-end gap-3">
-                <div className="flex flex-col sm:flex-row gap-3 w-full justify-end">
-                  {authMode === 'register' && (
-                    <input
-                      type="text"
-                      placeholder="Username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white outline-none w-full sm:w-36"
-                      required
-                    />
-                  )}
-                  <input
-                    type="email"
-                    placeholder="Email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white outline-none w-full sm:w-48"
-                    required
-                  />
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3 w-full justify-end">
-                  <input
-                    type="password"
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white outline-none w-full sm:w-48"
-                    required
-                  />
-                  {authMode === 'register' && (
-                    <input
-                      type="password"
-                      placeholder="Confirm Password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white outline-none w-full sm:w-48"
-                      required
-                    />
-                  )}
-                </div>
-                
-                <div className="flex items-center gap-3 w-full justify-end mt-2">
-                  <button 
-                    type="button" 
-                    onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} 
-                    className="text-xs text-gray-400 hover:text-primary transition-colors px-2"
-                  >
-                    {authMode === 'login' ? 'Create an account' : 'Already have an account? Log In'}
-                  </button>
-                  <button type="submit" className="px-5 py-2 bg-primary text-[#0B0C0F] font-bold rounded-lg shrink-0">
-                    {authMode === 'login' ? 'Log In' : 'Sign Up'}
-                  </button>
-                  {authMode === 'login' && (
-                    <button type="button" onClick={handleGoogleLogin} className="px-5 py-2 bg-white text-black font-bold rounded-lg shrink-0">
-                      Google
-                    </button>
-                  )}
-                </div>
+              <form onSubmit={handleEmailAuth} className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email"
+                  className="px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white outline-none w-full sm:w-48"
+                />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  className="px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white outline-none w-full sm:w-48"
+                />
+                <button type="submit" onClick={() => setAuthMode('login')} className="px-4 py-2 bg-primary text-[#0B0C0F] font-bold rounded-lg shrink-0">Log In</button>
+                <button type="button" onClick={handleGoogleLogin} className="px-4 py-2 bg-white text-black font-bold rounded-lg shrink-0">Google</button>
               </form>
               {authError && <div className="text-red-400 text-sm mt-2 text-right">{authError}</div>}
             </div>
@@ -381,67 +310,6 @@ export default function Profile() {
                     style={{ backgroundColor: color }}
                   />
                 ))}
-
-                {/* Custom Color Picker */}
-                <div 
-                  className={cn(
-                    "relative w-8 h-8 rounded-full overflow-hidden shrink-0 border-2 transition-transform cursor-pointer flex items-center justify-center",
-                    !['#8AD7D0', '#FF8A65', '#9575CD', '#4DB6AC', '#F06292', '#64B5F6'].includes(themeColor) 
-                      ? "scale-110 ring-2 ring-white ring-offset-2 ring-offset-gray-900 border-transparent" 
-                      : "border-dashed border-gray-500 hover:scale-110 hover:border-gray-400"
-                  )}
-                  style={{ backgroundColor: !['#8AD7D0', '#FF8A65', '#9575CD', '#4DB6AC', '#F06292', '#64B5F6'].includes(themeColor) ? themeColor : 'transparent' }}
-                  title="Custom Color"
-                >
-                  {['#8AD7D0', '#FF8A65', '#9575CD', '#4DB6AC', '#F06292', '#64B5F6'].includes(themeColor) && (
-                    <span className="text-gray-400 text-xs font-bold">+</span>
-                  )}
-                  <input
-                    type="color"
-                    value={themeColor}
-                    onChange={(e) => {
-                      setThemeColor(e.target.value);
-                      if (!isEditing) setIsEditing(true);
-                    }}
-                    className="absolute -inset-4 w-16 h-16 cursor-pointer opacity-0"
-                  />
-                </div>
-
-
-              </div>
-              <div className="mt-4 pt-4 border-t border-white/10">
-                <label className="block text-xs font-medium text-gray-400 mb-2">Build Custom Gradient</label>
-                <div className="flex flex-col gap-3">
-                  <div className="flex gap-4">
-                    <div className="flex-1">
-                      <label className="text-xs text-gray-500">Color 1</label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <input type="color" value={gradColor1} onChange={(e) => updateCustomGradient('c1', e.target.value)} className="w-8 h-8 rounded bg-transparent cursor-pointer" />
-                        <span className="text-xs text-gray-400 uppercase">{gradColor1}</span>
-                      </div>
-                    </div>
-                    {gradType !== 'solid' && (
-                      <div className="flex-1">
-                        <label className="text-xs text-gray-500">Color 2</label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <input type="color" value={gradColor2} onChange={(e) => updateCustomGradient('c2', e.target.value)} className="w-8 h-8 rounded bg-transparent cursor-pointer" />
-                          <span className="text-xs text-gray-400 uppercase">{gradColor2}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <select value={gradType} onChange={(e) => updateCustomGradient('type', e.target.value)} className="bg-gray-800 text-xs text-gray-300 px-2 py-1.5 rounded outline-none flex-1 border border-white/5">
-                      <option value="solid">Solid</option>
-                      <option value="linear">Linear</option>
-                      <option value="radial">Radial</option>
-                    </select>
-                    {gradType !== 'solid' && (
-                      <input type="text" value={gradDir} onChange={(e) => updateCustomGradient('dir', e.target.value)} placeholder="e.g. to right, 45deg" className="bg-gray-800 text-xs text-gray-300 px-2 py-1.5 rounded outline-none flex-1 border border-white/5" />
-                    )}
-                  </div>
-                </div>
-
               </div>
             </div>
 
@@ -599,3 +467,6 @@ export default function Profile() {
     </div>
   );
 }
+`;
+
+fs.writeFileSync('src/pages/Profile.tsx', content);
