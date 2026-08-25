@@ -17,6 +17,7 @@ export interface NextAiringEpisode {
 
 export interface AnimeMedia {
   id: number;
+  type?: string;
   title: AnimeTitle;
   coverImage: AnimeCoverImage;
   bannerImage: string | null;
@@ -28,6 +29,12 @@ export interface AnimeMedia {
   countryOfOrigin?: string;
   nextAiringEpisode: NextAiringEpisode | null;
   streamingEpisodes?: { title: string; url: string; thumbnail: string; site: string }[];
+  relations?: {
+    edges: {
+      relationType: string;
+      node: AnimeMedia;
+    }[];
+  };
 }
 
 export interface AiringSchedule {

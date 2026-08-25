@@ -29,6 +29,23 @@ export default function Profile() {
     };
   });
 
+  const [gradType, setGradType] = useState('linear');
+  const [gradDir, setGradDir] = useState('to right');
+  const [gradColor1, setGradColor1] = useState('#141e30');
+  const [gradColor2, setGradColor2] = useState('#243b55');
+
+  const updateGradient = (t: string, d: string, c1: string, c2: string) => {
+    setGradType(t);
+    setGradDir(d);
+    setGradColor1(c1);
+    setGradColor2(c2);
+    let str = '';
+    if (t === 'solid') str = c1;
+    else if (t === 'linear') str = `linear-gradient(${d}, ${c1}, ${c2})`;
+    else str = `radial-gradient(${d}, ${c1}, ${c2})`;
+    setProfile(prev => ({ ...prev, bgGradient: str }));
+  };
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -142,52 +159,156 @@ export default function Profile() {
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Background</label>
-                <div className="flex flex-col gap-2">
-                  <input
-                    type="text"
-                    value={profile.bgGradient || ''}
-                    onChange={e => setProfile({ ...profile, bgGradient: e.target.value })}
-                    className="bg-[#0B0C0F] text-[#EDF1F5] px-4 py-2 rounded-lg border border-gray-700 focus:outline-none focus:border-primary text-sm"
-                    placeholder="e.g. linear-gradient(to bottom, #111, #000)"
-                  />
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    <button 
-                      onClick={() => setProfile({ ...profile, bgGradient: 'linear-gradient(to right, #0f2027, #203a43, #2c5364)' })}
-                      className="w-6 h-6 rounded-full border-2 border-gray-700 hover:border-primary transition-colors"
-                      style={{ background: 'linear-gradient(to right, #0f2027, #203a43, #2c5364)' }}
-                      title="Ocean Night"
-                    />
-                    <button 
-                      onClick={() => setProfile({ ...profile, bgGradient: 'linear-gradient(to right, #141e30, #243b55)' })}
-                      className="w-6 h-6 rounded-full border-2 border-gray-700 hover:border-primary transition-colors"
-                      style={{ background: 'linear-gradient(to right, #141e30, #243b55)' }}
-                      title="Deep Blue"
-                    />
-                    <button 
-                      onClick={() => setProfile({ ...profile, bgGradient: 'linear-gradient(to bottom, #000000, #434343)' })}
-                      className="w-6 h-6 rounded-full border-2 border-gray-700 hover:border-primary transition-colors"
-                      style={{ background: 'linear-gradient(to bottom, #000000, #434343)' }}
-                      title="Midnight Gray"
-                    />
-                    <button 
-                      onClick={() => setProfile({ ...profile, bgGradient: 'radial-gradient(circle at top right, #1a1a2e, #16213e, #0f3460)' })}
-                      className="w-6 h-6 rounded-full border-2 border-gray-700 hover:border-primary transition-colors"
-                      style={{ background: 'radial-gradient(circle at top right, #1a1a2e, #16213e, #0f3460)' }}
-                      title="Cosmic Void"
-                    />
-                    <button 
-                      onClick={() => setProfile({ ...profile, bgGradient: 'linear-gradient(45deg, #2b1055, #7597de)' })}
-                      className="w-6 h-6 rounded-full border-2 border-gray-700 hover:border-primary transition-colors"
-                      style={{ background: 'linear-gradient(45deg, #2b1055, #7597de)' }}
-                      title="Purple Dusk"
-                    />
-                    <button 
-                      onClick={() => setProfile({ ...profile, bgGradient: '' })}
-                      className="w-6 h-6 rounded-full border-2 border-gray-700 hover:border-primary transition-colors bg-[#0B0C0F] flex items-center justify-center text-[10px] text-gray-500 font-bold"
-                      title="Default Solid Black"
-                    >
-                      Clear
-                    </button>
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-3 bg-[#0B0C0F] p-4 rounded-lg border border-gray-700">
+                    <div className="flex flex-wrap gap-4">
+                      <div className="flex flex-col gap-1 flex-1 min-w-[120px]">
+                        <label className="text-[10px] text-gray-500 uppercase font-bold">Type</label>
+                        <select 
+                          value={gradType} 
+                          onChange={e => updateGradient(e.target.value, gradDir, gradColor1, gradColor2)}
+                          className="bg-[#151F2E] text-[#EDF1F5] px-2 py-1.5 rounded border border-gray-600 text-sm focus:outline-none focus:border-primary"
+                        >
+                          <option value="solid">Solid Color</option>
+                          <option value="linear">Linear Gradient</option>
+                          <option value="radial">Radial Gradient</option>
+                        </select>
+                      </div>
+                      
+                      {gradType !== 'solid' && (
+                        <div className="flex flex-col gap-1 flex-1 min-w-[120px]">
+                          <label className="text-[10px] text-gray-500 uppercase font-bold">Direction</label>
+                          <select 
+                            value={gradDir} 
+                            onChange={e => updateGradient(gradType, e.target.value, gradColor1, gradColor2)}
+                            className="bg-[#151F2E] text-[#EDF1F5] px-2 py-1.5 rounded border border-gray-600 text-sm focus:outline-none focus:border-primary"
+                          >
+                            {gradType === 'linear' ? (
+                              <>
+                                <option value="to right">To Right</option>
+                                <option value="to bottom">To Bottom</option>
+                                <option value="to bottom right">To Bottom Right</option>
+                                <option value="45deg">45 Degrees</option>
+                              </>
+                            ) : (
+                              <>
+                                <option value="circle at center">Center</option>
+                                <option value="circle at top right">Top Right</option>
+                                <option value="circle at top left">Top Left</option>
+                                <option value="circle at bottom">Bottom</option>
+                              </>
+                            )}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-6 mt-1">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-gray-500 uppercase font-bold">{gradType === 'solid' ? 'Color' : 'Start Color'}</label>
+                        <div className="flex items-center gap-2 bg-[#151F2E] border border-gray-600 rounded p-1 pr-3">
+                          <input
+                            type="color"
+                            value={gradColor1}
+                            onChange={e => updateGradient(gradType, gradDir, e.target.value, gradColor2)}
+                            className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0"
+                          />
+                          <span className="text-xs text-gray-400 font-mono uppercase">{gradColor1}</span>
+                        </div>
+                      </div>
+                      
+                      {gradType !== 'solid' && (
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] text-gray-500 uppercase font-bold">End Color</label>
+                          <div className="flex items-center gap-2 bg-[#151F2E] border border-gray-600 rounded p-1 pr-3">
+                            <input
+                              type="color"
+                              value={gradColor2}
+                              onChange={e => updateGradient(gradType, gradDir, gradColor1, e.target.value)}
+                              className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0"
+                            />
+                            <span className="text-xs text-gray-400 font-mono uppercase">{gradColor2}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-[10px] text-gray-500 font-bold uppercase mb-2">Or Choose a Preset</div>
+                    <div className="flex flex-wrap gap-2">
+                      <button 
+                        onClick={() => {
+                          setGradType('linear');
+                          setGradDir('to right');
+                          setGradColor1('#0f2027');
+                          setGradColor2('#2c5364');
+                          setProfile({ ...profile, bgGradient: 'linear-gradient(to right, #0f2027, #203a43, #2c5364)' });
+                        }}
+                        className="w-8 h-8 rounded-full border-2 border-gray-700 hover:border-primary transition-colors"
+                        style={{ background: 'linear-gradient(to right, #0f2027, #203a43, #2c5364)' }}
+                        title="Ocean Night"
+                      />
+                      <button 
+                        onClick={() => {
+                          setGradType('linear');
+                          setGradDir('to right');
+                          setGradColor1('#141e30');
+                          setGradColor2('#243b55');
+                          setProfile({ ...profile, bgGradient: 'linear-gradient(to right, #141e30, #243b55)' });
+                        }}
+                        className="w-8 h-8 rounded-full border-2 border-gray-700 hover:border-primary transition-colors"
+                        style={{ background: 'linear-gradient(to right, #141e30, #243b55)' }}
+                        title="Deep Blue"
+                      />
+                      <button 
+                        onClick={() => {
+                          setGradType('linear');
+                          setGradDir('to bottom');
+                          setGradColor1('#000000');
+                          setGradColor2('#434343');
+                          setProfile({ ...profile, bgGradient: 'linear-gradient(to bottom, #000000, #434343)' });
+                        }}
+                        className="w-8 h-8 rounded-full border-2 border-gray-700 hover:border-primary transition-colors"
+                        style={{ background: 'linear-gradient(to bottom, #000000, #434343)' }}
+                        title="Midnight Gray"
+                      />
+                      <button 
+                        onClick={() => {
+                          setGradType('radial');
+                          setGradDir('circle at top right');
+                          setGradColor1('#1a1a2e');
+                          setGradColor2('#0f3460');
+                          setProfile({ ...profile, bgGradient: 'radial-gradient(circle at top right, #1a1a2e, #16213e, #0f3460)' });
+                        }}
+                        className="w-8 h-8 rounded-full border-2 border-gray-700 hover:border-primary transition-colors"
+                        style={{ background: 'radial-gradient(circle at top right, #1a1a2e, #16213e, #0f3460)' }}
+                        title="Cosmic Void"
+                      />
+                      <button 
+                        onClick={() => {
+                          setGradType('linear');
+                          setGradDir('45deg');
+                          setGradColor1('#2b1055');
+                          setGradColor2('#7597de');
+                          setProfile({ ...profile, bgGradient: 'linear-gradient(45deg, #2b1055, #7597de)' });
+                        }}
+                        className="w-8 h-8 rounded-full border-2 border-gray-700 hover:border-primary transition-colors"
+                        style={{ background: 'linear-gradient(45deg, #2b1055, #7597de)' }}
+                        title="Purple Dusk"
+                      />
+                      <button 
+                        onClick={() => {
+                          setGradType('solid');
+                          setGradColor1('#0B0C0F');
+                          setProfile({ ...profile, bgGradient: '' });
+                        }}
+                        className="w-8 h-8 rounded-full border-2 border-gray-700 hover:border-primary transition-colors bg-[#0B0C0F] flex items-center justify-center text-xs text-gray-500 font-bold"
+                        title="Default Solid Black"
+                      >
+                        X
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

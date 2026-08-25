@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Search, User, Tv, Menu, X } from 'lucide-react';
 import { fetchAnilist, SEARCH_ANIME_QUERY } from '../../api/anilist';
 import { AnimeMedia } from '../../types';
@@ -11,6 +11,17 @@ export default function Navbar() {
   const [showPreview, setShowPreview] = useState(false);
   const [avatar, setAvatar] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const getNavClass = (path: string) => {
+    const isActive = path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
+    return `px-3 py-1.5 rounded-lg transition-colors ${isActive ? 'bg-primary/10 text-primary font-bold' : 'hover:text-primary'}`;
+  };
+
+  const getMobileNavClass = (path: string) => {
+    const isActive = path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
+    return `px-3 py-2 rounded-lg text-sm tracking-wide transition-colors ${isActive ? 'bg-primary/10 text-primary font-bold' : 'text-[#EDF1F5] font-bold hover:text-primary hover:bg-white/5'}`;
+  };
 
   useEffect(() => {
     const loadProfile = () => {
@@ -69,12 +80,12 @@ export default function Navbar() {
             <Link to="/" className="text-3xl tracking-wide text-primary" style={{ fontFamily: "'Dancing Script', cursive" }}>
               Ani<span className="text-white">Hame</span>
             </Link>
-            <div className="hidden md:flex gap-6 text-sm font-medium text-gray-400">
-              <Link to="/" className="hover:text-primary transition-colors">Home</Link>
-              <Link to="/explore" className="hover:text-primary transition-colors">Explore</Link>
-              <Link to="/trending" className="hover:text-primary transition-colors">Trending</Link>
-              <Link to="/profile" className="hover:text-primary transition-colors">My List</Link>
-              <Link to="/schedule" className="hover:text-primary transition-colors">Schedule</Link>
+            <div className="hidden md:flex gap-2 text-sm font-medium text-gray-400 items-center">
+              <Link to="/" className={getNavClass('/')}>Home</Link>
+              <Link to="/explore" className={getNavClass('/explore')}>Explore</Link>
+              <Link to="/trending" className={getNavClass('/trending')}>Trending</Link>
+              <Link to="/profile" className={getNavClass('/profile')}>My List</Link>
+              <Link to="/schedule" className={getNavClass('/schedule')}>Schedule</Link>
             </div>
           </div>
 
@@ -133,12 +144,12 @@ export default function Navbar() {
 
       {isMobileMenuOpen && (
         <div className="md:hidden absolute top-14 left-0 w-full bg-[#151F2E] border-b border-primary/10 px-4 pt-4 pb-4 shadow-xl z-50">
-          <div className="flex flex-col gap-3 mb-4">
-            <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-[#EDF1F5] font-bold text-sm tracking-wide hover:text-primary transition-colors">Home</Link>
-            <Link to="/explore" onClick={() => setIsMobileMenuOpen(false)} className="text-[#EDF1F5] font-bold text-sm tracking-wide hover:text-primary transition-colors">Explore</Link>
-            <Link to="/trending" onClick={() => setIsMobileMenuOpen(false)} className="text-[#EDF1F5] font-bold text-sm tracking-wide hover:text-primary transition-colors">Trending</Link>
-            <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)} className="text-[#EDF1F5] font-bold text-sm tracking-wide hover:text-primary transition-colors">My List</Link>
-            <Link to="/schedule" onClick={() => setIsMobileMenuOpen(false)} className="text-[#EDF1F5] font-bold text-sm tracking-wide hover:text-primary transition-colors">Schedule</Link>
+          <div className="flex flex-col gap-2 mb-4">
+            <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className={getMobileNavClass('/')}>Home</Link>
+            <Link to="/explore" onClick={() => setIsMobileMenuOpen(false)} className={getMobileNavClass('/explore')}>Explore</Link>
+            <Link to="/trending" onClick={() => setIsMobileMenuOpen(false)} className={getMobileNavClass('/trending')}>Trending</Link>
+            <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)} className={getMobileNavClass('/profile')}>My List</Link>
+            <Link to="/schedule" onClick={() => setIsMobileMenuOpen(false)} className={getMobileNavClass('/schedule')}>Schedule</Link>
           </div>
           <div className="relative mb-2">
             <form onSubmit={handleSearch} className="relative">

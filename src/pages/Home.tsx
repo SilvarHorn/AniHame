@@ -27,6 +27,7 @@ export default function Home() {
   const [latestCountry, setLatestCountry] = useState(getProfileRegion);
   const [latestPage, setLatestPage] = useState(1);
   const [latestHasNext, setLatestHasNext] = useState(false);
+  const [isFetchingLatest, setIsFetchingLatest] = useState(false);
   const [error, setError] = useState('');
 
   // Fetch Trending
@@ -52,7 +53,9 @@ export default function Home() {
 
   // Fetch Latest
   useEffect(() => {
+    let isMounted = true;
     const fetchLatest = async () => {
+      setIsFetchingLatest(true);
       setError('');
       try {
         const data = await fetchAnilist(LATEST_UPDATED_ANIME_QUERY, { 
@@ -60,14 +63,23 @@ export default function Home() {
           perPage: 24,
           countryOfOrigin: latestCountry || undefined
         });
-        setLatest(data?.Page?.media || []);
-        setLatestHasNext(data?.Page?.pageInfo?.hasNextPage || false);
+        if (isMounted) {
+          setLatest(data?.Page?.media || []);
+          setLatestHasNext(data?.Page?.pageInfo?.hasNextPage || false);
+        }
       } catch (err) {
-        console.error('Error fetching latest:', err);
-        setError('Failed to fetch latest updates.');
+        if (isMounted) {
+          console.error('Error fetching latest:', err);
+          setError('Failed to fetch latest updates.');
+        }
+      } finally {
+        if (isMounted) {
+          setIsFetchingLatest(false);
+        }
       }
     };
     fetchLatest();
+    return () => { isMounted = false; };
   }, [latestCountry, latestPage]);
 
   // Reset page on country change
@@ -95,6 +107,7 @@ export default function Home() {
             onCountryChange={setLatestCountry}
             page={latestPage}
             hasNextPage={latestHasNext}
+            isLoading={isFetchingLatest}
             onNextPage={() => setLatestPage(p => p + 1)}
             onPrevPage={() => setLatestPage(p => Math.max(1, p - 1))}
           />

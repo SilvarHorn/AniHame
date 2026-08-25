@@ -2,6 +2,7 @@ import React from 'react';
 import { AnimeMedia } from '../../types';
 import AnimeCard from '../ui/AnimeCard';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface LatestGridProps {
   latest: AnimeMedia[];
@@ -9,6 +10,7 @@ interface LatestGridProps {
   onCountryChange: (country: string) => void;
   page?: number;
   hasNextPage?: boolean;
+  isLoading?: boolean;
   onNextPage?: () => void;
   onPrevPage?: () => void;
 }
@@ -19,6 +21,7 @@ export default function LatestGrid({
   onCountryChange,
   page = 1,
   hasNextPage = false,
+  isLoading = false,
   onNextPage,
   onPrevPage
 }: LatestGridProps) {
@@ -51,6 +54,7 @@ export default function LatestGrid({
   ].join(' ');
 
   const maxItemsToShow = cols['2xl'] * 2;
+  const dataKey = latest.map(a => a?.id).join('-');
 
   return (
     <div className="flex flex-col h-full w-full mt-6">
@@ -60,7 +64,7 @@ export default function LatestGrid({
           <div className="flex items-center gap-1 mr-2">
             <button 
               onClick={onPrevPage}
-              disabled={page <= 1}
+              disabled={page <= 1 || isLoading}
               className="p-1 rounded bg-[#151F2E] text-gray-400 hover:text-primary disabled:opacity-50 disabled:hover:text-gray-400 transition-colors"
             >
               <ChevronLeft size={16} />
@@ -68,7 +72,7 @@ export default function LatestGrid({
             <span className="text-xs font-bold text-gray-500 min-w-[20px] text-center">{page}</span>
             <button 
               onClick={onNextPage}
-              disabled={!hasNextPage}
+              disabled={!hasNextPage || isLoading}
               className="p-1 rounded bg-[#151F2E] text-gray-400 hover:text-primary disabled:opacity-50 disabled:hover:text-gray-400 transition-colors"
             >
               <ChevronRight size={16} />
@@ -90,44 +94,55 @@ export default function LatestGrid({
         </div>
       </div>
       
-      <div className={gridClasses}>
-        {Array.from({ length: maxItemsToShow }).map((_, index) => {
-          const anime = latest[index];
+      <div className="relative min-h-[400px]">
+        <AnimatePresence mode="wait">
+          <motion.div 
+            key={dataKey}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className={gridClasses}
+          >
+            {Array.from({ length: maxItemsToShow }).map((_, index) => {
+              const anime = latest[index];
 
-          const visibilityClass = [
-            index < cols.base * 2 ? 'block' : 'hidden',
-            index < cols.sm * 2 ? 'sm:block' : 'sm:hidden',
-            index < cols.md * 2 ? 'md:block' : 'md:hidden',
-            index < cols.lg * 2 ? 'lg:block' : 'lg:hidden',
-            index < cols.xl * 2 ? 'xl:block' : 'xl:hidden',
-            index < cols['2xl'] * 2 ? '2xl:block' : '2xl:hidden'
-          ].join(' ');
+              const visibilityClass = [
+                index < cols.base * 2 ? 'block' : 'hidden',
+                index < cols.sm * 2 ? 'sm:block' : 'sm:hidden',
+                index < cols.md * 2 ? 'md:block' : 'md:hidden',
+                index < cols.lg * 2 ? 'lg:block' : 'lg:hidden',
+                index < cols.xl * 2 ? 'xl:block' : 'xl:hidden',
+                index < cols['2xl'] * 2 ? '2xl:block' : '2xl:hidden'
+              ].join(' ');
 
-          if (anime) {
-            let latestEp = anime.episodes || 1;
-            if (anime.nextAiringEpisode) {
-              latestEp = Math.max(1, anime.nextAiringEpisode.episode - 1);
-            }
-            return (
-              <div key={anime.id} className={visibilityClass}>
-                <AnimeCard anime={anime} showProgress={true} progressEpisode={latestEp} />
-              </div>
-            );
-          }
+              if (anime) {
+                let latestEp = anime.episodes || 1;
+                if (anime.nextAiringEpisode) {
+                  latestEp = Math.max(1, anime.nextAiringEpisode.episode - 1);
+                }
+                return (
+                  <div key={anime.id} className={visibilityClass}>
+                    <AnimeCard anime={anime} showProgress={true} progressEpisode={latestEp} />
+                  </div>
+                );
+              }
 
-          return (
-            <div key={`empty-${index}`} className={visibilityClass}>
-              <div 
-                className="w-full h-full min-h-[160px] rounded-lg border border-white/5 opacity-[0.15] bg-[#151F2E]"
-                style={{
-                  backgroundImage: 'radial-gradient(var(--theme-color) 2px, transparent 2px)',
-                  backgroundSize: '16px 16px',
-                  backgroundPosition: 'center'
-                }}
-              />
-            </div>
-          );
-        })}
+              return (
+                <div key={`empty-${index}`} className={visibilityClass}>
+                  <div 
+                    className="w-full h-full min-h-[160px] rounded-lg border border-white/5 opacity-[0.15] bg-[#151F2E]"
+                    style={{
+                      backgroundImage: 'radial-gradient(var(--theme-color) 2px, transparent 2px)',
+                      backgroundSize: '16px 16px',
+                      backgroundPosition: 'center'
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );

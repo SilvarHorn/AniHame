@@ -86,22 +86,37 @@ export const AIRING_SCHEDULE_QUERY = `
   }
 `;
 
+export const MEDIA_FRAGMENT = `
+  fragment MediaFragment on Media {
+    id
+    type
+    title {
+      romaji
+      english
+    }
+    coverImage {
+      extraLarge
+      large
+      medium
+    }
+    bannerImage
+    averageScore
+    description(asHtml: true)
+    episodes
+    status
+    genres
+    nextAiringEpisode {
+      airingAt
+      episode
+    }
+  }
+`;
+
 export const ANIME_DETAILS_QUERY = `
+  ${MEDIA_FRAGMENT}
   query($id: Int) {
     Media(id: $id, type: ANIME) {
-      id
-      title {
-        romaji
-        english
-      }
-      coverImage {
-        extraLarge
-      }
-      bannerImage
-      averageScore
-      description(asHtml: true)
-      episodes
-      status
+      ...MediaFragment
       startDate {
         year
         month
@@ -113,10 +128,21 @@ export const ANIME_DETAILS_QUERY = `
         url
         site
       }
-      genres
-      nextAiringEpisode {
-        airingAt
-        episode
+      relations {
+        edges {
+          relationType(version: 2)
+          node {
+            ...MediaFragment
+            relations {
+              edges {
+                relationType(version: 2)
+                node {
+                  ...MediaFragment
+                }
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -162,6 +188,11 @@ export const LATEST_UPDATED_ANIME_QUERY = `
         averageScore
         episodes
         genres
+        nextAiringEpisode {
+          airingAt
+          timeUntilAiring
+          episode
+        }
       }
     }
   }

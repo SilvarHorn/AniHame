@@ -4,7 +4,47 @@ import { fetchAnilist, ANIME_DETAILS_QUERY } from '../api/anilist';
 import { AnimeMedia } from '../types';
 import { Play, Star, Calendar, Info, ExternalLink, ArrowDownUp, LayoutGrid, List as ListIcon, PlayCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { MarqueeText } from '../components/MarqueeText';
 import { getAnimeListStatus, addOrUpdateToList, removeFromList, MyListStatus } from '../utils/myList';
+import AnimeCard from '../components/ui/AnimeCard';
+
+const getRelatedAnime = (media: AnimeMedia) => {
+  if (!media.relations || !media.relations.edges) return [];
+  
+  const uniqueAnime = new Map<number, { node: AnimeMedia, relationType: string }>();
+  
+  const traverse = (edges: any[], isDirect: boolean) => {
+    edges.forEach(edge => {
+      if (!edge || !edge.node) return;
+      
+      if (edge.node.type === 'ANIME' && edge.node.id !== media.id) {
+        if (!uniqueAnime.has(edge.node.id)) {
+           uniqueAnime.set(edge.node.id, {
+             node: edge.node,
+             relationType: isDirect ? edge.relationType : 'FRANCHISE'
+           });
+        } else if (isDirect) {
+           uniqueAnime.set(edge.node.id, {
+             node: edge.node,
+             relationType: edge.relationType
+           });
+        }
+      }
+      
+      if (edge.node.relations && edge.node.relations.edges) {
+        traverse(edge.node.relations.edges, false);
+      }
+    });
+  };
+  
+  traverse(media.relations.edges, true);
+  
+  return Array.from(uniqueAnime.values()).sort((a, b) => {
+    if (a.relationType !== 'FRANCHISE' && b.relationType === 'FRANCHISE') return -1;
+    if (a.relationType === 'FRANCHISE' && b.relationType !== 'FRANCHISE') return 1;
+    return 0;
+  });
+};
 
 export default function AnimeDetails() {
   const { id } = useParams();
@@ -51,6 +91,8 @@ export default function AnimeDetails() {
     }
   };
 
+  const relatedAnimeList = React.useMemo(() => anime ? getRelatedAnime(anime) : [], [anime]);
+
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -70,11 +112,18 @@ export default function AnimeDetails() {
   }
   
   const episodeTitleMap = new Map<number, string>();
+  const episodeThumbMap = new Map<number, string>();
   if (anime?.streamingEpisodes) {
     anime.streamingEpisodes.forEach(ep => {
-      const match = ep.title.match(/Episode\s+(\d+)\s*[-:]\s*(.*)/i);
+      const match = ep.title.match(/Episode\s+(\d+)(?:\s*[-:]\s*(.*))?/i);
       if (match) {
-        episodeTitleMap.set(parseInt(match[1]), match[2].trim());
+        const epNum = parseInt(match[1]);
+        if (match[2]) {
+          episodeTitleMap.set(epNum, match[2].trim());
+        }
+        if (ep.thumbnail) {
+          episodeThumbMap.set(epNum, ep.thumbnail);
+        }
       }
     });
   }
@@ -211,27 +260,78 @@ export default function AnimeDetails() {
                     <Link
                       key={ep}
                       to={`/watch/${anime.id}/${ep}`}
-                      className="flex items-center gap-4 bg-gray-800 hover:bg-primary hover:text-[#0B0C0F] border border-white/5 rounded-xl p-4 font-bold text-sm text-gray-300 transition-all hover:scale-[1.01] shadow-lg group"
+                      className="flex items-center gap-4 bg-gray-800 hover:bg-gray-700 hover:border-primary/50 border border-white/5 rounded-xl p-3 font-bold text-sm text-gray-300 transition-all shadow-lg group relative overflow-hidden"
                     >
-                      <PlayCircle size={20} className="text-gray-500 group-hover:text-[#0B0C0F]" />
-                      <span className="text-base font-semibold">
-                        Episode {ep}{episodeTitleMap.has(ep) ? `:"${episodeTitleMap.get(ep)}"` : ""}
-                      </span>
+                      <div className="w-32 aspect-video flex-shrink-0 relative rounded-lg overflow-hidden bg-gray-900">
+                        <img 
+                          src={episodeThumbMap.get(ep) || anime.bannerImage || anime.coverImage.extraLarge || anime.coverImage.large} 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                          alt={`Episode ${ep}`} 
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xl font-black text-white">{ep}</span>
+                          <span className="text-sm font-medium text-gray-400 truncate group-hover:text-white transition-colors">
+                            {episodeTitleMap.get(ep) || `Episode ${ep}`}
+                          </span>
+                        </div>
+                      </div>
+                      <PlayCircle size={24} className="text-gray-500 group-hover:text-primary mr-2 flex-shrink-0" />
                     </Link>
                   ) : (
                     <Link
                       key={ep}
                       to={`/watch/${anime.id}/${ep}`}
-                      className="aspect-square flex-col text-center p-2 bg-gray-800 hover:bg-primary hover:text-[#0B0C0F] border border-white/5 rounded-xl flex items-center justify-center font-bold text-xs sm:text-sm text-gray-300 transition-all hover:scale-105 hover:-translate-y-1 shadow-lg"
+                      className="relative aspect-video flex-col text-center bg-gray-800 hover:border-primary border border-white/5 rounded-xl flex items-center justify-center transition-all hover:scale-105 hover:-translate-y-1 shadow-lg overflow-hidden group"
                     >
-                      <span className="line-clamp-3 px-1">
-                        Episode {ep}{episodeTitleMap.has(ep) ? `:"${episodeTitleMap.get(ep)}"` : ""}
-                      </span>
+                      <div className="absolute inset-0 w-full h-full">
+                        <img 
+                          src={episodeThumbMap.get(ep) || anime.bannerImage || anime.coverImage.extraLarge || anime.coverImage.large} 
+                          alt={`Episode ${ep}`} 
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-60 group-hover:opacity-30" 
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#0B0C0F] via-[#0B0C0F]/40 to-transparent opacity-80" />
+                      </div>
+                      
+                      <div className="relative z-10 flex flex-col items-center justify-center w-full h-full p-2">
+                        <div className="absolute inset-0 flex items-center justify-center transition-all duration-300 group-hover:opacity-0 group-hover:scale-90">
+                          <span className="text-3xl font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                            {ep}
+                          </span>
+                        </div>
+                        <div className="absolute inset-0 flex items-center justify-center p-2 opacity-0 group-hover:opacity-100 transition-all duration-300 scale-105 group-hover:scale-100">
+                          <MarqueeText 
+                            text={episodeTitleMap.get(ep) || `Episode ${ep}`}
+                            className="text-xs text-white font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] leading-tight"
+                          />
+                        </div>
+                      </div>
                     </Link>
                   )
                 ))}
               </div>
             </div>
+
+            {/* Related Anime Section */}
+            {relatedAnimeList.length > 0 && (
+              <div className="mt-16">
+                <div className="flex items-center mb-6">
+                  <h2 className="text-2xl font-bold text-[#EDF1F5] flex items-center gap-3">
+                    <span className="w-1.5 h-6 bg-primary rounded-full inline-block"></span>
+                    Related Anime
+                  </h2>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                  {relatedAnimeList.map(item => (
+                    <div key={item.node.id} className="flex flex-col gap-2">
+                      <AnimeCard anime={item.node} />
+                      <span className="text-xs text-primary font-bold uppercase tracking-wider text-center">{item.relationType.replace(/_/g, ' ')}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

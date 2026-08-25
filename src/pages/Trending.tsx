@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { fetchAnilist, TRENDING_ANIME_QUERY } from '../api/anilist';
 import { AnimeMedia } from '../types';
 import AnimeCard from '../components/ui/AnimeCard';
+import { motion, AnimatePresence } from 'motion/react';
 
 export default function Trending() {
   const [trending, setTrending] = useState<AnimeMedia[]>([]);
@@ -41,22 +42,33 @@ export default function Trending() {
         </h1>
       </div>
 
-      {loading ? (
-        <div className="text-center text-primary py-12">Loading...</div>
+      {loading && trending.length === 0 ? (
+        <div className="min-h-[400px]"></div>
       ) : error ? (
         <div className="text-center text-red-500 py-12">{error}</div>
       ) : trending.length > 0 ? (
         <>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8 gap-4 md:gap-6">
-            {trending.map(anime => (
-              <AnimeCard key={anime.id} anime={anime} />
-            ))}
+          <div className="relative min-h-[400px]">
+            <AnimatePresence mode="wait">
+              <motion.div 
+                key={trending.map(a => a?.id).join('-')}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+                className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8 gap-4 md:gap-6"
+              >
+                {trending.map(anime => (
+                  <AnimeCard key={anime.id} anime={anime} />
+                ))}
+              </motion.div>
+            </AnimatePresence>
           </div>
           
           <div className="flex justify-center items-center gap-4 mt-12">
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
+              disabled={page === 1 || loading}
               className="px-4 py-2 bg-[#151F2E] text-white rounded-lg disabled:opacity-50 hover:bg-gray-800 transition-colors font-bold text-sm"
             >
               Previous
@@ -64,7 +76,7 @@ export default function Trending() {
             <span className="text-gray-400 font-medium">Page {page}</span>
             <button
               onClick={() => setPage(p => p + 1)}
-              disabled={!hasNextPage}
+              disabled={!hasNextPage || loading}
               className="px-4 py-2 bg-[#151F2E] text-white rounded-lg disabled:opacity-50 hover:bg-gray-800 transition-colors font-bold text-sm"
             >
               Next
