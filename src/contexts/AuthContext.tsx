@@ -1,7 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { auth, db } from '../lib/firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 
 export interface UserPreferences {
   defaultServer: 'ani' | 'mal' | 'vidsrc';
@@ -20,7 +17,7 @@ export interface UserProfile {
 }
 
 interface AuthContextType {
-  currentUser: User | null;
+  currentUser: any | null;
   profile: UserProfile | null;
   loading: boolean;
   updatePreferences: (prefs: Partial<UserPreferences>) => Promise<void>;
@@ -30,6 +27,14 @@ interface AuthContextType {
 const defaultPreferences: UserPreferences = {
   defaultServer: 'ani',
   defaultAudio: 'sub',
+};
+
+const defaultProfile: UserProfile = {
+  uid: 'local-user',
+  email: null,
+  displayName: 'Guest',
+  photoURL: null,
+  preferences: defaultPreferences
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -43,94 +48,70 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const isInitialMount = useRef(true);
 
-useEffect(() => {
-    let unsubDoc: (() => void) | undefined;
-
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      
-      if (user) {
-        const docRef = doc(db, 'users', user.uid);
-        
-        try {
-          const docSnap = await getDoc(docRef);
-          
-          if (!docSnap.exists()) {
-            const initialProfile: UserProfile = {
-              uid: user.uid,
-              email: user.email,
-              displayName: user.displayName,
-              photoURL: user.photoURL,
-              preferences: defaultPreferences
-            };
-            await setDoc(docRef, initialProfile, { merge: true });
-            setProfile(initialProfile);
-          }
-          
-          if (unsubDoc) unsubDoc();
-          
-          unsubDoc = onSnapshot(docRef, (snap) => {
-if (snap.exists()) {
-              const data = snap.data() as UserProfile;
-              setProfile(data);
-              // Sync to local storage for Layout.tsx to pick up theme
-              try {
-                const localData = {
-                  username: data.displayName || 'User',
-                  avatar: data.photoURL || '',
-                  themeColor: data.themeColor || '#8AD7D0',
-                  bgGradient: data.bgGradient || ''
-                };
-                localStorage.setItem('anime_profile', JSON.stringify(localData));
-                window.dispatchEvent(new Event('profile-updated'));
-              } catch(e) {}
-            }
-          }, (err) => {
-            console.error("Snapshot error ignored:", err);
-          });
-          
-        } catch (e) {
-          console.error("Auth context error:", e);
-        }
-        
-        setLoading(false);
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('app_user_profile');
+      if (stored) {
+        setProfile(JSON.parse(stored));
       } else {
-        setProfile(null);
-        setLoading(false);
-        if (unsubDoc) {
-          unsubDoc();
-          unsubDoc = undefined;
-        }
+        setProfile(defaultProfile);
       }
-    });
-
-    return () => {
-      unsubscribe();
-      if (unsubDoc) unsubDoc();
-    };
+    } catch (e) {
+      setProfile(defaultProfile);
+    }
+    setLoading(false);
   }, []);
 
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    if (profile) {
+      try {
+        localStorage.setItem('app_user_profile', JSON.stringify(profile));
+        const navData = {
+          username: profile.displayName || 'Guest',
+          avatar: profile.photoURL || '',
+          themeColor: profile.themeColor || '#8AD7D0',
+          bgGradient: profile.bgGradient || ''
+        };
+        localStorage.setItem('anime_profile', JSON.stringify(navData));
+        window.dispatchEvent(new Event('profile-updated'));
+      } catch (e) {}
+    }
+  }, [profile]);
 
   const updateProfileData = async (data: Partial<UserProfile>) => {
-    if (!currentUser || !profile) return;
-    const docRef = doc(db, 'users', currentUser.uid);
-    await setDoc(docRef, data, { merge: true });
+    setProfile(prev => {
+      const p = prev || defaultProfile;
+      return { ...p, ...data };
+    });
   };
 
   const updatePreferences = async (newPrefs: Partial<UserPreferences>) => {
-    if (!currentUser || !profile) return;
-    
-    const updatedPreferences = { ...profile.preferences, ...newPrefs };
-    const docRef = doc(db, 'users', currentUser.uid);
-    await setDoc(docRef, { preferences: updatedPreferences }, { merge: true });
+    setProfile(prev => {
+      const p = prev || defaultProfile;
+      const currentPrefs = p.preferences || defaultPreferences;
+      return { 
+        ...p, 
+        preferences: { ...currentPrefs, ...newPrefs } 
+      };
+    });
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, profile, loading, updatePreferences, updateProfileData }}>
+    <AuthContext.Provider value={{ 
+      currentUser: { id: 'local-user', email: 'guest@local' }, 
+      profile, 
+      loading, 
+      updatePreferences, 
+      updateProfileData 
+    }}>
       {children}
     </AuthContext.Provider>
   );

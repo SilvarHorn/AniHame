@@ -13,26 +13,26 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
-let animeMappings: any[] | null = null;
-let mappingFetchPromise: Promise<any> | null = null;
+  let animeMappings: any[] | null = null;
+  let mappingFetchPromise: Promise<any> | null = null;
 
-async function getAnimeMappings() {
-  if (animeMappings) return animeMappings;
-  if (!mappingFetchPromise) {
-    mappingFetchPromise = fetch('https://raw.githubusercontent.com/SilvarHorn/anime-lists/master/anime-list-mini.json')
-      .then(res => res.json())
-      .then(data => {
-        animeMappings = data;
-        return data;
-      })
-      .catch(err => {
-        console.error("Failed to fetch anime mappings", err);
-        mappingFetchPromise = null;
-        return [];
-      });
+  async function getAnimeMappings() {
+    if (animeMappings) return animeMappings;
+    if (!mappingFetchPromise) {
+      mappingFetchPromise = fetch('https://raw.githubusercontent.com/SilvarHorn/anime-lists/master/anime-list-mini.json')
+        .then(res => res.json())
+        .then(data => {
+          animeMappings = data;
+          return data;
+        })
+        .catch(err => {
+          console.error("Failed to fetch anime mappings", err);
+          mappingFetchPromise = null;
+          return [];
+        });
+    }
+    return mappingFetchPromise;
   }
-  return mappingFetchPromise;
-}
 
   app.get("/api/mapping/:anilistId", async (req, res) => {
     const anilistId = parseInt(req.params.anilistId, 10);
@@ -51,7 +51,6 @@ async function getAnimeMappings() {
       res.status(500).json({ error: error.message });
     }
   });
-
 
   app.post("/api/anilist", async (req, res) => {
     try {

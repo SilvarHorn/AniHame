@@ -2,9 +2,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, LogOut, Save, Mail, Key, Edit3, Camera } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { auth, googleProvider, db } from '../lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
-import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
 import AnimeCard from '../components/ui/AnimeCard';
 import { MyListStatus, getMyList, MyListItem } from '../utils/myList';
 import { cn } from '../lib/utils';
@@ -21,13 +18,8 @@ const TABS: { label: string; value: MyListStatus | 'ALL' }[] = [
 export default function Profile() {
   const { currentUser, profile, loading, updatePreferences, updateProfileData } = useAuth();
   
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  const [authError, setAuthError] = useState('');
-  
+      const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+    
   // Local profile state for guests & editing
   const [isEditing, setIsEditing] = useState(false);
   const [localDisplayName, setLocalDisplayName] = useState('User');
@@ -88,45 +80,7 @@ export default function Profile() {
     setPage(1);
   }, [activeTab]);
 
-  const handleEmailAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthError('');
-    
-    if (authMode === 'register') {
-      if (!username.trim()) {
-        setAuthError('Username is required for registration.');
-        return;
-      }
-      if (password !== confirmPassword) {
-        setAuthError('Passwords do not match.');
-        return;
-      }
-    }
-
-    try {
-      if (authMode === 'login') {
-        await signInWithEmailAndPassword(auth, email, password);
-      } else {
-        const userCred = await createUserWithEmailAndPassword(auth, email, password);
-        await updateProfile(userCred.user, { displayName: username });
-        const docRef = doc(db, 'users', userCred.user.uid);
-        await setDoc(docRef, { displayName: username }, { merge: true });
-      }
-    } catch (err: any) {
-      setAuthError(err.message || 'Authentication failed');
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    setAuthError('');
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (err: any) {
-      setAuthError(err.message || 'Google Login failed');
-    }
-  };
-
-  const updateGradient = (t: string, d: string, c1: string, c2: string) => {
+      const updateGradient = (t: string, d: string, c1: string, c2: string) => {
     setGradType(t);
     setGradDir(d);
     setGradColor1(c1);
@@ -156,7 +110,35 @@ export default function Profile() {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setLocalAvatar(reader.result as string);
+        // Resize image to prevent localStorage quota issues
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 150;
+          const MAX_HEIGHT = 150;
+          let width = img.width;
+          let height = img.height;
+          
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          setLocalAvatar(canvas.toDataURL('image/jpeg', 0.8));
+          if (!isEditing) setIsEditing(true);
+        };
+        img.src = reader.result as string;
       };
       reader.readAsDataURL(file);
     }
@@ -203,82 +185,7 @@ export default function Profile() {
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
       
-      {!currentUser && (
-        <div className="mb-8 p-6 bg-[#151F2E] rounded-2xl border border-white/5 shadow-xl">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div>
-              <h2 className="text-xl font-bold text-[#EDF1F5] mb-2 flex items-center gap-2">
-                <span className="text-yellow-500">⚠️</span> Not Logged In
-              </h2>
-              <p className="text-gray-400">You can customize your profile and settings here, but <strong className="text-white">preferences will not be saved</strong> across devices unless you log in.</p>
-            </div>
-            <div className="w-full md:w-auto">
-              <form onSubmit={handleEmailAuth} className="flex flex-col items-end gap-3">
-                <div className="flex flex-col sm:flex-row gap-3 w-full justify-end">
-                  {authMode === 'register' && (
-                    <input
-                      type="text"
-                      placeholder="Username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white outline-none w-full sm:w-36"
-                      required
-                    />
-                  )}
-                  <input
-                    type="email"
-                    placeholder="Email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white outline-none w-full sm:w-48"
-                    required
-                  />
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3 w-full justify-end">
-                  <input
-                    type="password"
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white outline-none w-full sm:w-48"
-                    required
-                  />
-                  {authMode === 'register' && (
-                    <input
-                      type="password"
-                      placeholder="Confirm Password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-white outline-none w-full sm:w-48"
-                      required
-                    />
-                  )}
-                </div>
-                
-                <div className="flex items-center gap-3 w-full justify-end mt-2">
-                  <button 
-                    type="button" 
-                    onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} 
-                    className="text-xs text-gray-400 hover:text-primary transition-colors px-2"
-                  >
-                    {authMode === 'login' ? 'Create an account' : 'Already have an account? Log In'}
-                  </button>
-                  <button type="submit" className="px-5 py-2 bg-primary text-[#0B0C0F] font-bold rounded-lg shrink-0">
-                    {authMode === 'login' ? 'Log In' : 'Sign Up'}
-                  </button>
-                  {authMode === 'login' && (
-                    <button type="button" onClick={handleGoogleLogin} className="px-5 py-2 bg-white text-black font-bold rounded-lg shrink-0">
-                      Google
-                    </button>
-                  )}
-                </div>
-              </form>
-              {authError && <div className="text-red-400 text-sm mt-2 text-right">{authError}</div>}
-            </div>
-          </div>
-        </div>
-      )}
-
+      
       {/* Profile Section */}
       <div className="bg-[#151F2E] rounded-2xl border border-white/5 p-6 md:p-8 mb-8 shadow-xl">
         <div className="flex flex-col sm:flex-row items-center gap-6 mb-8">
@@ -323,7 +230,7 @@ export default function Profile() {
             ) : (
               <h1 className="text-3xl font-bold text-[#EDF1F5] mb-2">{localDisplayName}</h1>
             )}
-            <p className="text-gray-400 max-w-2xl">{currentUser ? currentUser.email : 'Guest User'}</p>
+            <p className="text-gray-400 max-w-2xl">'Guest User'</p>
           </div>
           
           <div className="flex items-center gap-3">
@@ -346,14 +253,7 @@ export default function Profile() {
               </button>
             )}
             
-            {currentUser && (
-              <button 
-                onClick={() => signOut(auth)}
-                className="flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 text-red-400 px-5 py-2.5 rounded-xl font-bold transition-colors border border-white/5"
-              >
-                <LogOut size={18} />
-              </button>
-            )}
+            
           </div>
         </div>
 
@@ -588,9 +488,13 @@ export default function Profile() {
           </>
         ) : (
           <div className="text-center py-20 bg-[#151F2E] rounded-2xl border border-gray-800 border-dashed">
-            <div className="bg-gray-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <User size={24} className="text-gray-400" />
-            </div>
+            {localAvatar ? (
+              <img src={localAvatar} alt="Profile" className="w-16 h-16 rounded-full object-cover mx-auto mb-4 border-2 border-gray-800" />
+            ) : (
+              <div className="bg-gray-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <User size={24} className="text-gray-400" />
+              </div>
+            )}
             <h3 className="text-lg font-bold text-[#EDF1F5] mb-2">No anime found</h3>
             <p className="text-gray-400">Add anime to your "{TABS.find(t => t.value === activeTab)?.label}" list to see them here.</p>
           </div>
