@@ -30,9 +30,9 @@ export default function LatestGrid({
   const cols = {
     base: 3,
     sm: 4,
-    md: 5,
+    md: 6,
     lg: 6,
-    xl: 7,
+    xl: 8,
     '2xl': 8
   };
 
@@ -44,7 +44,7 @@ export default function LatestGrid({
   const xxlGridCols: Record<number, string> = { 1: '2xl:grid-cols-1', 2: '2xl:grid-cols-2', 3: '2xl:grid-cols-3', 4: '2xl:grid-cols-4', 5: '2xl:grid-cols-5', 6: '2xl:grid-cols-6', 7: '2xl:grid-cols-7', 8: '2xl:grid-cols-8', 9: '2xl:grid-cols-9', 10: '2xl:grid-cols-10', 11: '2xl:grid-cols-11', 12: '2xl:grid-cols-12' };
 
   const gridClasses = [
-    'grid gap-3 pr-2',
+    'grid gap-4 md:gap-6',
     gridCols[cols.base],
     smGridCols[cols.sm],
     mdGridCols[cols.md],

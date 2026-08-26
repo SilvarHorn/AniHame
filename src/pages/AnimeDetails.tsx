@@ -159,7 +159,7 @@ export default function AnimeDetails() {
         <div className="absolute inset-0 bg-gradient-to-t from-[#0B0C0F] via-[#0B0C0F]/80 to-transparent" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-32 relative z-10 pb-12">
+      <div className="w-full px-4 sm:px-6 lg:px-8 -mt-32 relative z-10 pb-12">
         <div className="flex flex-col md:flex-row gap-8">
           {/* Left Column - Cover & Actions */}
           <div className="w-48 md:w-64 flex-shrink-0 mx-auto md:mx-0">

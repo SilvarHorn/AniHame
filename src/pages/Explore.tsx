@@ -90,7 +90,7 @@ export default function Explore() {
   }, [searchQuery, genre, status, year, season, formats, sort, page]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-12">
       <div className="flex flex-col gap-4 mb-8">
         <h1 className="text-3xl font-bold text-[#EDF1F5] flex items-center gap-3">
           <span className="w-1.5 h-8 bg-primary rounded-full inline-block"></span>

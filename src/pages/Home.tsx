@@ -127,7 +127,7 @@ export default function Home() {
       {/* Rest of the page waits for the Banner to finish loading before mounting and staggering in */}
       {!loading && (
         <motion.div 
-          className="flex-1 flex flex-col p-4 md:p-6 lg:px-8 gap-6 max-w-7xl mx-auto w-full"
+          className="flex-1 flex flex-col p-4 md:p-6 lg:px-8 gap-6 w-full"
           variants={containerVariants}
           initial="hidden"
           animate="show"

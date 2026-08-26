@@ -78,7 +78,7 @@ const [showPreview, setShowPreview] = useState(false);
 
   return (
     <nav className="fixed top-0 w-full z-50 bg-[#151F2E] border-b border-primary/10 h-14 shrink-0 flex flex-col justify-center">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+      <div className="w-full px-4 sm:px-6 lg:px-8 w-full">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-8">
             <Link to="/" className="text-3xl tracking-wide text-primary" style={{ fontFamily: "'Dancing Script', cursive" }}>

@@ -3,6 +3,7 @@ import useEmblaCarousel from 'embla-carousel-react';
 import { getProgress, removeProgress } from '../../store/progress';
 import { Link } from 'react-router-dom';
 import { Play, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 export default function ContinueWatching() {
   const [progress, setProgress] = useState(getProgress());
@@ -27,8 +28,17 @@ export default function ContinueWatching() {
       </div>
       <div className="overflow-hidden" ref={emblaRef}>
         <div className="flex gap-4">
-          {progress.map((item) => (
-            <div key={item.animeId} className="relative flex-[0_0_200px] sm:flex-[0_0_220px] group">
+          <AnimatePresence mode="popLayout">
+            {progress.map((item) => (
+              <motion.div 
+                layout
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8, filter: 'blur(4px)' }}
+                transition={{ duration: 0.3 }}
+                key={item.animeId} 
+                className="relative flex-[0_0_200px] sm:flex-[0_0_220px] group"
+              >
               <Link 
                 to={`/watch/${item.animeId}/${item.lastEpisodeWatched}`}
                 className="block relative cursor-pointer"
@@ -64,13 +74,14 @@ export default function ContinueWatching() {
               >
                 <X size={14} />
               </button>
-            </div>
-          ))}
-          <div className="relative flex-[0_0_200px] sm:flex-[0_0_220px]">
+              </motion.div>
+            ))}
+          </AnimatePresence>
+          <motion.div layout className="relative flex-[0_0_200px] sm:flex-[0_0_220px]">
             <Link to="/continue-watching" className="flex items-center justify-center border-2 border-dashed border-gray-800 rounded-lg h-28 text-gray-700 hover:text-gray-500 hover:border-gray-700 transition-colors text-[10px] font-bold">
               + MORE ACTIVE SERIES
             </Link>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>

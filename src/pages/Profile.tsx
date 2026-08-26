@@ -1,6 +1,8 @@
+import 'react-easy-crop/react-easy-crop.css';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { User, LogOut, Save, Mail, Key, Edit3, Camera } from 'lucide-react';
+import { User, LogOut, Save, Mail, Key, Edit3, Camera, X } from 'lucide-react';
+import Cropper from 'react-easy-crop';
 import { useAuth } from '../contexts/AuthContext';
 import AnimeCard from '../components/ui/AnimeCard';
 import { MyListStatus, getMyList, MyListItem } from '../utils/myList';
@@ -44,6 +46,11 @@ export default function Profile() {
   const [page, setPage] = useState(1);
   const itemsPerPage = 24;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [cropImageSrc, setCropImageSrc] = useState('');
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+
 
   // Sync with AuthContext or LocalStorage
   useEffect(() => {
@@ -105,43 +112,56 @@ export default function Profile() {
     if (!isEditing) setIsEditing(true);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        // Resize image to prevent localStorage quota issues
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 150;
-          const MAX_HEIGHT = 150;
-          let width = img.width;
-          let height = img.height;
-          
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-          setLocalAvatar(canvas.toDataURL('image/jpeg', 0.8));
-          if (!isEditing) setIsEditing(true);
-        };
-        img.src = reader.result as string;
+        setCropImageSrc(reader.result as string);
       };
       reader.readAsDataURL(file);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
+  };
+
+  const onCropComplete = (croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  };
+
+  const saveCrop = () => {
+    if (!cropImageSrc || !croppedAreaPixels) return;
+
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const MAX_WIDTH = 150;
+      const MAX_HEIGHT = 150;
+      
+      canvas.width = MAX_WIDTH;
+      canvas.height = MAX_HEIGHT;
+      
+      ctx.drawImage(
+        img,
+        croppedAreaPixels.x,
+        croppedAreaPixels.y,
+        croppedAreaPixels.width,
+        croppedAreaPixels.height,
+        0,
+        0,
+        MAX_WIDTH,
+        MAX_HEIGHT
+      );
+      
+      setLocalAvatar(canvas.toDataURL('image/jpeg', 0.8));
+      setCropImageSrc('');
+      if (!isEditing) setIsEditing(true);
+    };
+    img.src = cropImageSrc;
   };
 
   const handleSaveAll = async () => {
@@ -183,7 +203,65 @@ export default function Profile() {
   const paginatedList = filteredList.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+    <div className="w-full p-4 sm:p-6 lg:p-8">
+      {/* Crop Modal */}
+      {cropImageSrc && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4">
+          <div className="bg-[#151F2E] border border-white/10 rounded-2xl w-full max-w-md overflow-hidden flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between p-4 border-b border-white/5">
+              <h3 className="text-lg font-bold text-white">Crop Profile Picture</h3>
+              <button onClick={() => setCropImageSrc('')} className="text-gray-400 hover:text-white transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="relative w-full h-80 bg-black">
+              <Cropper
+                image={cropImageSrc}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                cropShape="round"
+                showGrid={false}
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+              />
+            </div>
+            
+            <div className="p-4 bg-gray-900/50">
+              <div className="mb-4">
+                <label className="text-xs font-medium text-gray-400 mb-2 block">Zoom</label>
+                <input
+                  type="range"
+                  value={zoom}
+                  min={1}
+                  max={3}
+                  step={0.1}
+                  aria-labelledby="Zoom"
+                  onChange={(e) => setZoom(Number(e.target.value))}
+                  className="w-full accent-primary"
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={() => setCropImageSrc('')}
+                  className="px-4 py-2 rounded-lg font-bold text-gray-400 hover:bg-gray-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={saveCrop}
+                  className="px-4 py-2 bg-primary text-[#0B0C0F] rounded-lg font-bold hover:bg-primary-hover transition-colors"
+                >
+                  Apply Crop
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       
       
       {/* Profile Section */}
