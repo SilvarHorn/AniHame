@@ -174,7 +174,7 @@ let iframeUrl = '';
         <div className="flex-1 flex flex-col gap-4 min-w-0">
           <div className="w-full bg-black rounded-xl overflow-hidden shadow-2xl shadow-black/50 border border-white/5 flex flex-col aspect-video shrink-0">
             <div className="w-full h-full relative">
-              <iframe sandbox="allow-scripts allow-same-origin allow-forms allow-presentation" 
+              <iframe 
                 src={iframeUrl}
                 allowFullScreen
                 className="absolute inset-0 w-full h-full border-none"
