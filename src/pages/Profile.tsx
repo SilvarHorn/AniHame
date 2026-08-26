@@ -1,9 +1,12 @@
 import 'react-easy-crop/react-easy-crop.css';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { User, LogOut, Save, Mail, Key, Edit3, Camera, X } from 'lucide-react';
+import { User, LogOut, LogIn, Save, Mail, Key, Edit3, Camera, X } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import { useAuth } from '../contexts/AuthContext';
+import { auth } from '../lib/firebase';
+import { signOut } from 'firebase/auth';
+import { useNavigate } from 'react-router-dom';
 import AnimeCard from '../components/ui/AnimeCard';
 import { MyListStatus, getMyList, MyListItem } from '../utils/myList';
 import { cn } from '../lib/utils';
@@ -19,6 +22,11 @@ const TABS: { label: string; value: MyListStatus | 'ALL' }[] = [
 
 export default function Profile() {
   const { currentUser, profile, loading, updatePreferences, updateProfileData } = useAuth();
+  const navigate = useNavigate();
+  const handleSignOut = async () => {
+    await signOut(auth);
+    navigate("/");
+  };
   
       const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
     
@@ -308,7 +316,7 @@ export default function Profile() {
             ) : (
               <h1 className="text-3xl font-bold text-[#EDF1F5] mb-2">{localDisplayName}</h1>
             )}
-            <p className="text-gray-400 max-w-2xl">'Guest User'</p>
+            <p className="text-gray-400 max-w-2xl">{currentUser?.email || 'Guest User'}</p>
           </div>
           
           <div className="flex items-center gap-3">
@@ -328,6 +336,26 @@ export default function Profile() {
               >
                 <Edit3 size={18} />
                 Edit Profile
+              </button>
+            )}
+            
+            {currentUser && !isEditing && (
+              <button 
+                onClick={handleSignOut}
+                className="flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 px-5 py-2.5 rounded-xl font-bold transition-colors border border-red-500/20"
+              >
+                <LogOut size={18} />
+                Sign Out
+              </button>
+            )}
+
+            {!currentUser && !isEditing && (
+              <button 
+                onClick={() => navigate('/auth')}
+                className="flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary px-5 py-2.5 rounded-xl font-bold transition-colors border border-primary/20"
+              >
+                <LogIn size={18} />
+                Sign In
               </button>
             )}
             

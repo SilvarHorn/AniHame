@@ -12,6 +12,8 @@ import Profile from './pages/Profile';
 import Schedule from './pages/Schedule';
 import ContinueWatching from './pages/ContinueWatching';
 
+import Auth from './pages/Auth';
+
 function PageWrapper({ children }: { children: React.ReactNode }) {
   return (
     <motion.div
@@ -40,6 +42,7 @@ function AnimatedRoutes() {
         <Route path="/profile" element={<PageWrapper><Profile /></PageWrapper>} />
         <Route path="/schedule" element={<PageWrapper><Schedule /></PageWrapper>} />
         <Route path="/continue-watching" element={<PageWrapper><ContinueWatching /></PageWrapper>} />
+        <Route path="/auth" element={<PageWrapper><Auth /></PageWrapper>} />
       </Routes>
     </AnimatePresence>
   );

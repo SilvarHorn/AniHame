@@ -27,6 +27,9 @@ export interface AnimeMedia {
   description: string;
   episodes: number | null;
   status: string;
+  startDate?: { year: number | null; month: number | null; day: number | null };
+  endDate?: { year: number | null; month: number | null; day: number | null };
+  studios?: { edges: { isMain: boolean; node: { name: string } }[] };
   genres: string[];
   countryOfOrigin?: string;
   nextAiringEpisode: NextAiringEpisode | null;

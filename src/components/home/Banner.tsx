@@ -42,7 +42,7 @@ export default function Banner({ trending }: BannerProps) {
   return (
     <div className="w-full px-4 sm:px-6 lg:px-8 w-full mt-4 md:mt-6">
       <div 
-        className="relative w-full h-[32vh] min-h-[256px] md:min-h-[304px] lg:min-h-[336px] overflow-hidden shrink-0 group rounded-2xl shadow-2xl border border-gray-800"
+        className="relative w-full h-[40vh] md:h-[32vh] min-h-[320px] md:min-h-[304px] lg:min-h-[336px] overflow-hidden shrink-0 group rounded-2xl shadow-2xl border border-gray-800"
         style={{ transform: 'translateZ(0)', WebkitMaskImage: '-webkit-radial-gradient(white, black)' }}
       >
         <div className="h-full" ref={emblaRef}>

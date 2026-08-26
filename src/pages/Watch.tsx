@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronDown, ArrowDownUp, LayoutGrid, List as ListIcon, Pl
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
 import { MarqueeText } from '../components/MarqueeText';
+import { AnimeInfo } from '../components/ui/AnimeInfo';
 
 export default function Watch() {
   const { profile } = useAuth();
@@ -184,47 +185,79 @@ let iframeUrl = '';
           </div>
             
           {/* Episode Controls */}
-          <div className="flex items-center justify-between bg-[#151F2E] p-4 rounded-xl border border-primary/10 shrink-0">
-            {currentEp > 1 ? (
-              <Link
-                to={`/watch/${animeId}/${currentEp - 1}`}
-                className="px-4 py-2 bg-gray-800 hover:bg-primary hover:text-[#0B0C0F] text-gray-300 rounded-lg transition-colors font-bold text-sm"
-              >
-                Previous Episode
-              </Link>
-            ) : (
-              <div className="px-4 py-2 bg-gray-800/50 text-gray-500 rounded-lg font-bold text-sm cursor-not-allowed">
-                Previous Episode
-              </div>
-            )}
-            <div className="flex items-center gap-2 sm:gap-4 flex-wrap justify-center">
+          <div className="flex flex-col lg:flex-row items-center justify-between bg-[#151F2E] p-4 rounded-xl border border-primary/10 shrink-0 gap-4">
+            {/* Mobile Nav: Prev / Next */}
+            <div className="flex lg:hidden items-center justify-between w-full">
+              {currentEp > 1 ? (
+                <Link
+                  to={`/watch/${animeId}/${currentEp - 1}`}
+                  className="px-4 py-2 bg-gray-800 hover:bg-primary hover:text-[#0B0C0F] text-gray-300 rounded-lg transition-colors font-bold text-sm"
+                >
+                  Prev
+                </Link>
+              ) : (
+                <div className="px-4 py-2 bg-gray-800/50 text-gray-500 rounded-lg font-bold text-sm cursor-not-allowed">
+                  Prev
+                </div>
+              )}
+              {currentEp < Math.max(1, episodeCount) ? (
+                <Link
+                  to={`/watch/${animeId}/${currentEp + 1}`}
+                  className="px-4 py-2 bg-gray-800 hover:bg-primary hover:text-[#0B0C0F] text-gray-300 rounded-lg transition-colors font-bold text-sm"
+                >
+                  Next
+                </Link>
+              ) : (
+                <div className="px-4 py-2 bg-gray-800/50 text-gray-500 rounded-lg font-bold text-sm cursor-not-allowed">
+                  Next
+                </div>
+              )}
+            </div>
+
+            {/* Desktop Nav: Prev */}
+            <div className="hidden lg:block">
+              {currentEp > 1 ? (
+                <Link
+                  to={`/watch/${animeId}/${currentEp - 1}`}
+                  className="px-4 py-2 bg-gray-800 hover:bg-primary hover:text-[#0B0C0F] text-gray-300 rounded-lg transition-colors font-bold text-sm"
+                >
+                  Previous Episode
+                </Link>
+              ) : (
+                <div className="px-4 py-2 bg-gray-800/50 text-gray-500 rounded-lg font-bold text-sm cursor-not-allowed">
+                  Previous Episode
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 flex-wrap justify-center w-full lg:w-auto">
               {/* Server Selector */}
-              <div className="flex items-center bg-gray-800 rounded-lg p-1">
+              <div className="flex items-center bg-gray-800 rounded-lg p-1 w-full sm:w-auto justify-center">
                 <button
                   onClick={() => setServerType('ani')}
                   className={cn(
-                    "px-3 sm:px-4 py-1.5 rounded-md text-sm font-bold transition-colors",
+                    "flex-1 sm:flex-none px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-colors",
                     serverType === 'ani' ? "bg-primary text-[#0B0C0F] shadow-sm" : "text-gray-400 hover:text-gray-200"
                   )}
                 >
-                  MegaPlay AniList
+                  AniList
                 </button>
                 <button
                   onClick={() => setServerType('mal')}
                   disabled={!anime?.idMal}
                   className={cn(
-                    "px-3 sm:px-4 py-1.5 rounded-md text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+                    "flex-1 sm:flex-none px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
                     serverType === 'mal' ? "bg-primary text-[#0B0C0F] shadow-sm" : "text-gray-400 hover:text-gray-200"
                   )}
                   title={!anime?.idMal ? "MAL ID not available for this anime" : undefined}
                 >
-                  MegaPlay MAL
+                  MAL
                 </button>
                 <button
                   onClick={() => setServerType('vidsrc')}
                   disabled={!imdbId}
                   className={cn(
-                    "px-3 sm:px-4 py-1.5 rounded-md text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+                    "flex-1 sm:flex-none px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
                     serverType === 'vidsrc' ? "bg-primary text-[#0B0C0F] shadow-sm" : "text-gray-400 hover:text-gray-200"
                   )}
                   title={!imdbId ? "IMDb ID not available for this anime" : undefined}
@@ -232,14 +265,13 @@ let iframeUrl = '';
                   VidSrc
                 </button>
               </div>
-
               {/* Audio Type Selector */}
               {serverType !== 'vidsrc' && (
-                <div className="flex items-center bg-gray-800 rounded-lg p-1">
+                <div className="flex items-center bg-gray-800 rounded-lg p-1 w-full sm:w-auto justify-center mt-2 sm:mt-0">
                   <button
                     onClick={() => setAudioType('sub')}
                     className={cn(
-                      "px-3 sm:px-4 py-1.5 rounded-md text-sm font-bold transition-colors",
+                      "flex-1 sm:flex-none px-6 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-colors",
                       audioType === 'sub' ? "bg-primary text-[#0B0C0F] shadow-sm" : "text-gray-400 hover:text-gray-200"
                     )}
                   >
@@ -248,7 +280,7 @@ let iframeUrl = '';
                   <button
                     onClick={() => setAudioType('dub')}
                     className={cn(
-                      "px-3 sm:px-4 py-1.5 rounded-md text-sm font-bold transition-colors",
+                      "flex-1 sm:flex-none px-6 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-colors",
                       audioType === 'dub' ? "bg-primary text-[#0B0C0F] shadow-sm" : "text-gray-400 hover:text-gray-200"
                     )}
                   >
@@ -258,18 +290,25 @@ let iframeUrl = '';
               )}
             </div>
 
-            {currentEp < Math.max(1, episodeCount) ? (
-              <Link
-                to={`/watch/${animeId}/${currentEp + 1}`}
-                className="px-4 py-2 bg-gray-800 hover:bg-primary hover:text-[#0B0C0F] text-gray-300 rounded-lg transition-colors font-bold text-sm"
-              >
-                Next Episode
-              </Link>
-            ) : (
-              <div className="px-4 py-2 bg-gray-800/50 text-gray-500 rounded-lg font-bold text-sm cursor-not-allowed">
-                Next Episode
-              </div>
-            )}
+            {/* Desktop Nav: Next */}
+            <div className="hidden lg:block">
+              {currentEp < Math.max(1, episodeCount) ? (
+                <Link
+                  to={`/watch/${animeId}/${currentEp + 1}`}
+                  className="px-4 py-2 bg-gray-800 hover:bg-primary hover:text-[#0B0C0F] text-gray-300 rounded-lg transition-colors font-bold text-sm"
+                >
+                  Next Episode
+                </Link>
+              ) : (
+                <div className="px-4 py-2 bg-gray-800/50 text-gray-500 rounded-lg font-bold text-sm cursor-not-allowed">
+                  Next Episode
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="hidden lg:block mt-4">
+            <AnimeInfo anime={anime} />
           </div>
         </div>
 
@@ -405,6 +444,11 @@ let iframeUrl = '';
           ))}
         </div>
       </div>
+
+      <div className="block lg:hidden mt-8 mb-8">
+        <AnimeInfo anime={anime} />
+      </div>
+
       </div>
     </div>
   );

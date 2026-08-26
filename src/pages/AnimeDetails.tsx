@@ -5,6 +5,7 @@ import { AnimeMedia } from '../types';
 import { Play, Star, Calendar, Info, ExternalLink, ArrowDownUp, LayoutGrid, List as ListIcon, PlayCircle, MonitorPlay } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { MarqueeText } from '../components/MarqueeText';
+import { AnimeInfo } from '../components/ui/AnimeInfo';
 import { getAnimeListStatus, addOrUpdateToList, removeFromList, MyListStatus } from '../utils/myList';
 import AnimeCard from '../components/ui/AnimeCard';
 
@@ -237,45 +238,9 @@ export default function AnimeDetails() {
             <h1 className="text-3xl md:text-5xl font-bold text-[#EDF1F5] mb-4">
               {title}
             </h1>
-            
-            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-300 mb-6 font-medium">
-              <div className="flex items-center gap-1.5 text-primary">
-                <Star size={18} fill="currentColor" />
-                <span className="text-lg">{anime.averageScore}%</span>
-              </div>
-              <div className="w-1.5 h-1.5 rounded-full bg-gray-600" />
-              <div className="flex items-center gap-1.5">
-                <MonitorPlay size={18} />
-                <span>{anime.format?.replace(/_/g, ' ') || anime.type || 'ANIME'}</span>
-              </div>
-              <div className="w-1.5 h-1.5 rounded-full bg-gray-600" />
-              <div className="flex items-center gap-1.5">
-                <Calendar size={18} />
-                <span>{anime.status}</span>
-              </div>
-              <div className="w-1.5 h-1.5 rounded-full bg-gray-600" />
-              <div className="flex items-center gap-1.5">
-                <Info size={18} />
-                <span>{episodeCount} Episodes</span>
-              </div>
+            <div className="mb-12">
+              <AnimeInfo anime={anime} hideTitle={true} className="bg-transparent border-none p-0 sm:p-0" />
             </div>
-
-            <div className="flex flex-wrap gap-2 mb-8">
-              {anime.genres.map(genre => (
-                <span 
-                  key={genre}
-                  className="px-3 py-1 rounded-full bg-gray-800 border border-gray-700 text-xs font-bold text-gray-300"
-                >
-                  {genre}
-                </span>
-              ))}
-            </div>
-
-            <p 
-              className="text-gray-400 leading-relaxed mb-12 text-sm md:text-base max-w-3xl"
-              dangerouslySetInnerHTML={{ __html: anime.description }}
-            />
-
             {/* Episodes Section */}
             <div>
               <div className="flex items-center justify-between mb-6">
