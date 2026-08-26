@@ -99,6 +99,32 @@ export default function Watch() {
     );
   }
 
+  if (loading && !anime) {
+    return (
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-pulse">
+        <div className="aspect-video w-full bg-gray-800/60 rounded-xl mb-6 border border-white/5" />
+        <div className="flex gap-4 mb-6">
+          <div className="h-10 w-24 bg-gray-800/60 rounded-md" />
+          <div className="h-10 w-24 bg-gray-800/60 rounded-md" />
+        </div>
+        <div className="flex flex-col lg:flex-row gap-8">
+          <div className="w-full lg:w-3/4">
+            <div className="h-12 w-3/4 bg-gray-800/60 rounded-lg mb-6" />
+            <div className="h-32 w-full bg-gray-800/60 rounded-lg" />
+          </div>
+          <div className="w-full lg:w-1/4">
+            <div className="h-8 w-1/2 bg-gray-800/60 rounded-lg mb-4" />
+            <div className="grid grid-cols-5 gap-2">
+              {Array.from({length: 25}).map((_, i) => (
+                <div key={i} className="aspect-square bg-gray-800/60 rounded-md" />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!anime) return null;
 
   // Same logic to get available episodes

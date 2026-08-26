@@ -26,10 +26,10 @@ service cloud.firestore {
       let validUid = data.uid is string && data.uid.size() <= 128 && (data.uid == request.auth.uid || isAdmin());
       let validEmail = !('email' in data) || data.email == null || (data.email is string && data.email.size() <= 256);
       let validDisplayName = !('displayName' in data) || data.displayName == null || (data.displayName is string && data.displayName.size() <= 128);
-      let validPhotoURL = !('photoURL' in data) || data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 1024);
-      let validBio = !('bio' in data) || (data.bio is string && data.bio.size() <= 1024);
-      let validThemeColor = !('themeColor' in data) || (data.themeColor is string && data.themeColor.size() <= 64);
-      let validBgGradient = !('bgGradient' in data) || (data.bgGradient is string && data.bgGradient.size() <= 256);
+      let validPhotoURL = !('photoURL' in data) || data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 1048576);
+      let validBio = !('bio' in data) || data.bio == null || (data.bio is string && data.bio.size() <= 1024);
+      let validThemeColor = !('themeColor' in data) || data.themeColor == null || (data.themeColor is string && data.themeColor.size() <= 64);
+      let validBgGradient = !('bgGradient' in data) || data.bgGradient == null || (data.bgGradient is string && data.bgGradient.size() <= 256);
       
       let validPrefs = data.preferences is map 
         && (!('defaultServer' in data.preferences) || data.preferences.defaultServer in ['ani', 'mal', 'vidsrc'])

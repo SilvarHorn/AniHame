@@ -1,7 +1,8 @@
 import 'react-easy-crop/react-easy-crop.css';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { User, LogOut, LogIn, Save, Mail, Key, Edit3, Camera, X } from 'lucide-react';
+import { User, LogOut, LogIn, Save, Mail, Key, Edit3, Camera, X, Check } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import Cropper from 'react-easy-crop';
 import { useAuth } from '../contexts/AuthContext';
 import { auth } from '../lib/firebase';
@@ -9,6 +10,7 @@ import { signOut } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import AnimeCard from '../components/ui/AnimeCard';
 import { MyListStatus, getMyList, MyListItem } from '../utils/myList';
+import SingleSelect from '../components/ui/SingleSelect';
 import { cn } from '../lib/utils';
 
 const TABS: { label: string; value: MyListStatus | 'ALL' }[] = [
@@ -47,6 +49,7 @@ export default function Profile() {
   const [gradColor2, setGradColor2] = useState('#243b55');
   const [bgGradient, setBgGradient] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   // List states
   const [activeTab, setActiveTab] = useState<MyListStatus | 'ALL'>('ALL');
@@ -198,8 +201,13 @@ export default function Profile() {
       } catch (e) {}
     }
     
-    setIsEditing(false);
     setIsSaving(false);
+    setShowSuccess(true);
+    
+    setTimeout(() => {
+      setShowSuccess(false);
+      setIsEditing(false);
+    }, 1500);
   };
 
   if (loading) {
@@ -320,46 +328,80 @@ export default function Profile() {
           </div>
           
           <div className="flex items-center gap-3">
-            {isEditing ? (
-              <button 
-                onClick={handleSaveAll}
-                disabled={isSaving}
-                className="flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-[#0B0C0F] px-5 py-2.5 rounded-xl font-bold transition-colors border border-white/5 disabled:opacity-50"
-              >
-                <Save size={18} />
-                {isSaving ? 'Saving...' : 'Save'}
-              </button>
-            ) : (
-              <button 
-                onClick={() => setIsEditing(true)}
-                className="flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-5 py-2.5 rounded-xl font-bold transition-colors border border-white/5"
-              >
-                <Edit3 size={18} />
-                Edit Profile
-              </button>
-            )}
+            <AnimatePresence mode="wait">
+              {showSuccess ? (
+                <motion.button 
+                  key="success"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-center justify-center gap-2 bg-green-500 text-white px-5 py-2.5 rounded-xl font-bold transition-colors border border-green-500/20"
+                >
+                  <Check size={18} />
+                  Saved!
+                </motion.button>
+              ) : isEditing ? (
+                <motion.button 
+                  key="save"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={handleSaveAll}
+                  disabled={isSaving}
+                  className="flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-[#0B0C0F] px-5 py-2.5 rounded-xl font-bold transition-colors border border-white/5 disabled:opacity-50"
+                >
+                  {isSaving ? <div className="w-4 h-4 rounded-full border-2 border-[#0B0C0F] border-t-transparent animate-spin" /> : <Save size={18} />}
+                  {isSaving ? 'Saving...' : 'Save'}
+                </motion.button>
+              ) : (
+                <motion.button 
+                  key="edit"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={() => setIsEditing(true)}
+                  className="flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-5 py-2.5 rounded-xl font-bold transition-colors border border-white/5"
+                >
+                  <Edit3 size={18} />
+                  Edit Profile
+                </motion.button>
+              )}
+            </AnimatePresence>
             
-            {currentUser && !isEditing && (
-              <button 
-                onClick={handleSignOut}
-                className="flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 px-5 py-2.5 rounded-xl font-bold transition-colors border border-red-500/20"
-              >
-                <LogOut size={18} />
-                Sign Out
-              </button>
-            )}
+            <AnimatePresence mode="wait">
+              {currentUser && !isEditing && !showSuccess && (
+                <motion.button 
+                  key="signout"
+                  initial={{ opacity: 0, scale: 0.95, width: 0, paddingLeft: 0, paddingRight: 0, marginLeft: 0 }}
+                  animate={{ opacity: 1, scale: 1, width: 'auto', paddingLeft: 20, paddingRight: 20, marginLeft: 12 }}
+                  exit={{ opacity: 0, scale: 0.95, width: 0, paddingLeft: 0, paddingRight: 0, marginLeft: 0 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={handleSignOut}
+                  className="flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 py-2.5 rounded-xl font-bold transition-colors border border-red-500/20 whitespace-nowrap overflow-hidden"
+                >
+                  <LogOut size={18} />
+                  Sign Out
+                </motion.button>
+              )}
 
-            {!currentUser && !isEditing && (
-              <button 
-                onClick={() => navigate('/auth')}
-                className="flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary px-5 py-2.5 rounded-xl font-bold transition-colors border border-primary/20"
-              >
-                <LogIn size={18} />
-                Sign In
-              </button>
-            )}
-            
-            
+              {!currentUser && !isEditing && !showSuccess && (
+                <motion.button 
+                  key="signin"
+                  initial={{ opacity: 0, scale: 0.95, width: 0, paddingLeft: 0, paddingRight: 0, marginLeft: 0 }}
+                  animate={{ opacity: 1, scale: 1, width: 'auto', paddingLeft: 20, paddingRight: 20, marginLeft: 12 }}
+                  exit={{ opacity: 0, scale: 0.95, width: 0, paddingLeft: 0, paddingRight: 0, marginLeft: 0 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={() => navigate('/auth')}
+                  className="flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary py-2.5 rounded-xl font-bold transition-colors border border-primary/20 whitespace-nowrap overflow-hidden"
+                >
+                  <LogIn size={18} />
+                  Sign In
+                </motion.button>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
@@ -437,13 +479,25 @@ export default function Profile() {
                     )}
                   </div>
                   <div className="flex gap-2">
-                    <select value={gradType} onChange={(e) => updateCustomGradient('type', e.target.value)} className="bg-gray-800 text-xs text-gray-300 px-2 py-1.5 rounded outline-none flex-1 border border-white/5">
-                      <option value="solid">Solid</option>
-                      <option value="linear">Linear</option>
-                      <option value="radial">Radial</option>
-                    </select>
+                    <div className="flex-1 min-w-[140px]">
+                      <SingleSelect
+                        options={[
+                          { label: 'Solid', value: 'solid' },
+                          { label: 'Linear', value: 'linear' },
+                          { label: 'Radial', value: 'radial' }
+                        ]}
+                        value={gradType}
+                        onChange={(val) => updateCustomGradient('type', val as string)}
+                      />
+                    </div>
                     {gradType !== 'solid' && (
-                      <input type="text" value={gradDir} onChange={(e) => updateCustomGradient('dir', e.target.value)} placeholder="e.g. to right, 45deg" className="bg-gray-800 text-xs text-gray-300 px-2 py-1.5 rounded outline-none flex-1 border border-white/5" />
+                      <input 
+                        type="text" 
+                        value={gradDir} 
+                        onChange={(e) => updateCustomGradient('dir', e.target.value)} 
+                        placeholder="e.g. to right, 45deg" 
+                        className="bg-[#151F2E] text-sm text-[#EDF1F5] px-3 h-[42px] rounded-md outline-none flex-1 border border-gray-700 focus:border-primary transition-colors min-w-[140px]" 
+                      />
                     )}
                   </div>
                 </div>
@@ -490,44 +544,27 @@ export default function Profile() {
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-gray-900/50 p-5 rounded-xl border border-white/5">
               <label className="block text-sm font-medium text-gray-400 mb-3">Default Video Server</label>
-              <div className="flex flex-col gap-2">
-                {(['ani', 'mal', 'vidsrc'] as const).map(server => (
-                  <label key={server} className="flex items-center gap-3 p-3 rounded-lg border border-gray-800 cursor-pointer hover:bg-gray-800 transition-colors">
-                    <input 
-                      type="radio" 
-                      name="server" 
-                      value={server} 
-                      checked={defaultServer === server}
-                      onChange={() => { setDefaultServer(server); if(!isEditing) setIsEditing(true); }}
-                      className="text-primary focus:ring-primary bg-gray-900 border-gray-700"
-                    />
-                    <span className="text-sm font-medium text-gray-200">
-                      {server === 'ani' ? 'MegaPlay AniList' : server === 'mal' ? 'MegaPlay MAL' : 'VidSrc'}
-                    </span>
-                  </label>
-                ))}
-              </div>
+              <SingleSelect
+                options={[
+                  { label: 'MegaPlay AniList', value: 'ani' },
+                  { label: 'MegaPlay MAL', value: 'mal' },
+                  { label: 'VidSrc', value: 'vidsrc' }
+                ]}
+                value={defaultServer}
+                onChange={(val) => { setDefaultServer(val as 'ani' | 'mal' | 'vidsrc'); if(!isEditing) setIsEditing(true); }}
+              />
             </div>
 
             <div className="bg-gray-900/50 p-5 rounded-xl border border-white/5">
               <label className="block text-sm font-medium text-gray-400 mb-3">Default Audio Track</label>
-              <div className="flex flex-col gap-2">
-                {(['sub', 'dub'] as const).map(audio => (
-                  <label key={audio} className="flex items-center gap-3 p-3 rounded-lg border border-gray-800 cursor-pointer hover:bg-gray-800 transition-colors">
-                    <input 
-                      type="radio" 
-                      name="audio" 
-                      value={audio} 
-                      checked={defaultAudio === audio}
-                      onChange={() => { setDefaultAudio(audio); if(!isEditing) setIsEditing(true); }}
-                      className="text-primary focus:ring-primary bg-gray-900 border-gray-700"
-                    />
-                    <span className="text-sm font-medium text-gray-200">
-                      {audio === 'sub' ? 'Subtitled (Japanese)' : 'Dubbed (English)'}
-                    </span>
-                  </label>
-                ))}
-              </div>
+              <SingleSelect
+                options={[
+                  { label: 'Subtitled (Japanese)', value: 'sub' },
+                  { label: 'Dubbed (English)', value: 'dub' }
+                ]}
+                value={defaultAudio}
+                onChange={(val) => { setDefaultAudio(val as 'sub' | 'dub'); if(!isEditing) setIsEditing(true); }}
+              />
             </div>
           </div>
         </div>

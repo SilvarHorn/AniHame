@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchAnilist, ANIME_DETAILS_QUERY } from '../api/anilist';
 import { AnimeMedia } from '../types';
+import { motion, AnimatePresence } from 'motion/react';
 import { Play, Star, Calendar, Info, ExternalLink, ArrowDownUp, LayoutGrid, List as ListIcon, PlayCircle, MonitorPlay } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { MarqueeText } from '../components/MarqueeText';
@@ -57,6 +58,7 @@ export default function AnimeDetails() {
   const [isListView, setIsListView] = useState(false);
   const [listStatus, setListStatus] = useState<MyListStatus | null>(null);
   const [imdbId, setImdbId] = useState<string | null>(null);
+  const [showEpisodes, setShowEpisodes] = useState(false);
 
   useEffect(() => {
     const loadDetails = async () => {
@@ -90,8 +92,21 @@ export default function AnimeDetails() {
       }
     };
 
-    if (id) loadDetails();
+    if (id) {
+      setLoading(true);
+      setShowEpisodes(false);
+      loadDetails();
+    }
   }, [id]);
+
+  useEffect(() => {
+    if (!loading && anime) {
+      const timer = setTimeout(() => {
+        setShowEpisodes(true);
+      }, 50); // 50ms delay to ensure it renders last
+      return () => clearTimeout(timer);
+    }
+  }, [loading, anime]);
 
   const handleListStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
@@ -112,6 +127,33 @@ export default function AnimeDetails() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-red-500 font-medium">Error: {error}</div>
+      </div>
+    );
+  }
+
+  if (loading && !anime) {
+    return (
+      <div className="animate-pulse">
+        <div className="w-full h-[40vh] min-h-[300px] bg-gray-800/40"></div>
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 relative z-10 flex flex-col md:flex-row gap-8">
+          <div className="w-[200px] sm:w-[250px] md:w-[300px] flex-shrink-0 -mt-32 md:-mt-48 relative mx-auto md:mx-0">
+            <div className="aspect-[2/3] w-full rounded-2xl bg-gray-800/60 shadow-xl border border-white/5" />
+            <div className="mt-6 flex flex-col gap-3">
+              <div className="h-12 bg-gray-800/60 rounded-xl" />
+              <div className="h-12 bg-gray-800/60 rounded-xl" />
+            </div>
+          </div>
+          <div className="flex-grow pt-8 md:pt-32">
+            <div className="h-12 w-3/4 bg-gray-800/60 rounded-lg mb-6" />
+            <div className="h-[200px] w-full bg-gray-800/60 rounded-xl mb-12" />
+            <div className="h-8 w-32 bg-gray-800/60 rounded-lg mb-6" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+              {Array.from({length: 12}).map((_, i) => (
+                <div key={i} className="aspect-video bg-gray-800/60 rounded-xl" />
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -155,6 +197,7 @@ export default function AnimeDetails() {
         <img 
           src={anime.bannerImage || anime.coverImage.extraLarge} 
           alt={title}
+          fetchpriority="high"
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0B0C0F] via-[#0B0C0F]/80 to-transparent" />
@@ -168,6 +211,7 @@ export default function AnimeDetails() {
               <img 
                 src={anime.coverImage.extraLarge} 
                 alt={title}
+                fetchpriority="high"
                 className="w-full h-full object-cover"
               />
             </div>
@@ -267,68 +311,81 @@ export default function AnimeDetails() {
                 </div>
               </div>
               
-              <div className={cn(
-                "gap-3",
-                isListView 
-                  ? "flex flex-col" 
-                  : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
-              )}>
-                {episodes.map(ep => (
-                  isListView ? (
-                    <Link
-                      key={ep}
-                      to={`/watch/${anime.id}/${ep}`}
-                      className="flex items-center gap-4 bg-gray-800 hover:bg-gray-700 hover:border-primary/50 border border-white/5 rounded-xl p-3 font-bold text-sm text-gray-300 transition-all shadow-lg group relative overflow-hidden"
-                    >
-                      <div className="w-32 aspect-video flex-shrink-0 relative rounded-lg overflow-hidden bg-gray-900">
-                        <img 
-                          src={episodeThumbMap.get(ep) || anime.bannerImage || anime.coverImage.extraLarge || anime.coverImage.large} 
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                          alt={`Episode ${ep}`} 
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xl font-black text-white">{ep}</span>
-                          <span className="text-sm font-medium text-gray-400 truncate group-hover:text-white transition-colors">
-                            {episodeTitleMap.get(ep) || `Episode ${ep}`}
-                          </span>
-                        </div>
-                      </div>
-                      <PlayCircle size={24} className="text-gray-500 group-hover:text-primary mr-2 flex-shrink-0" />
-                    </Link>
-                  ) : (
-                    <Link
-                      key={ep}
-                      to={`/watch/${anime.id}/${ep}`}
-                      className="relative aspect-video flex-col text-center bg-gray-800 hover:border-primary border border-white/5 rounded-xl flex items-center justify-center transition-all hover:scale-105 hover:-translate-y-1 shadow-lg overflow-hidden group"
-                    >
-                      <div className="absolute inset-0 w-full h-full">
-                        <img 
-                          src={episodeThumbMap.get(ep) || anime.bannerImage || anime.coverImage.extraLarge || anime.coverImage.large} 
-                          alt={`Episode ${ep}`} 
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-60 group-hover:opacity-30" 
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0B0C0F] via-[#0B0C0F]/40 to-transparent opacity-80" />
-                      </div>
-                      
-                      <div className="relative z-10 flex flex-col items-center justify-center w-full h-full p-2">
-                        <div className="absolute inset-0 flex items-center justify-center transition-all duration-300 group-hover:opacity-0 group-hover:scale-90">
-                          <span className="text-3xl font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                            {ep}
-                          </span>
-                        </div>
-                        <div className="absolute inset-0 flex items-center justify-center p-2 opacity-0 group-hover:opacity-100 transition-all duration-300 scale-105 group-hover:scale-100">
-                          <MarqueeText 
-                            text={episodeTitleMap.get(ep) || `Episode ${ep}`}
-                            className="text-xs text-white font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] leading-tight"
-                          />
-                        </div>
-                      </div>
-                    </Link>
-                  )
-                ))}
-              </div>
+              <AnimatePresence mode="wait">
+                {showEpisodes ? (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    className={cn(
+                      "gap-3",
+                      isListView 
+                        ? "flex flex-col" 
+                        : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+                    )}
+                  >
+                    {episodes.map(ep => (
+                      isListView ? (
+                        <Link
+                          key={ep}
+                          to={`/watch/${anime.id}/${ep}`}
+                          className="flex items-center gap-4 bg-gray-800 hover:bg-gray-700 hover:border-primary/50 border border-white/5 rounded-xl p-3 font-bold text-sm text-gray-300 transition-all shadow-lg group relative overflow-hidden"
+                        >
+                          <div className="w-32 aspect-video flex-shrink-0 relative rounded-lg overflow-hidden bg-gray-900">
+                            <img 
+                              src={episodeThumbMap.get(ep) || anime.bannerImage || anime.coverImage.extraLarge || anime.coverImage.large} 
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                              alt={`Episode ${ep}`} 
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xl font-black text-white">{ep}</span>
+                              <span className="text-sm font-medium text-gray-400 truncate group-hover:text-white transition-colors">
+                                {episodeTitleMap.get(ep) || `Episode ${ep}`}
+                              </span>
+                            </div>
+                          </div>
+                          <PlayCircle size={24} className="text-gray-500 group-hover:text-primary mr-2 flex-shrink-0" />
+                        </Link>
+                      ) : (
+                        <Link
+                          key={ep}
+                          to={`/watch/${anime.id}/${ep}`}
+                          className="relative aspect-video flex-col text-center bg-gray-800 hover:border-primary border border-white/5 rounded-xl flex items-center justify-center transition-all hover:scale-105 hover:-translate-y-1 shadow-lg overflow-hidden group"
+                        >
+                          <div className="absolute inset-0 w-full h-full">
+                            <img 
+                              src={episodeThumbMap.get(ep) || anime.bannerImage || anime.coverImage.extraLarge || anime.coverImage.large} 
+                              alt={`Episode ${ep}`} 
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-60 group-hover:opacity-30" 
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-[#0B0C0F] via-[#0B0C0F]/40 to-transparent opacity-80" />
+                          </div>
+                          
+                          <div className="relative z-10 flex flex-col items-center justify-center w-full h-full p-2">
+                            <div className="absolute inset-0 flex items-center justify-center transition-all duration-300 group-hover:opacity-0 group-hover:scale-90">
+                              <span className="text-3xl font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                                {ep}
+                              </span>
+                            </div>
+                            <div className="absolute inset-0 flex items-center justify-center p-2 opacity-0 group-hover:opacity-100 transition-all duration-300 scale-105 group-hover:scale-100">
+                              <MarqueeText 
+                                text={episodeTitleMap.get(ep) || `Episode ${ep}`}
+                                className="text-xs text-white font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] leading-tight"
+                              />
+                            </div>
+                          </div>
+                        </Link>
+                      )
+                    ))}
+                  </motion.div>
+                ) : (
+                  <div className="w-full h-32 flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Related Anime Section */}

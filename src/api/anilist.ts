@@ -108,6 +108,10 @@ export const MEDIA_FRAGMENT = `
     episodes
     status
     genres
+    tags {
+      name
+      isMediaSpoiler
+    }
     nextAiringEpisode {
       airingAt
       episode

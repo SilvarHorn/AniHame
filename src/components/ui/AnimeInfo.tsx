@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { AnimeMedia } from '../../types';
 import { Star, MonitorPlay, Calendar, Clock, PlayCircle, Info } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -7,6 +8,7 @@ export function AnimeInfo({ anime, className, hideTitle = false }: { anime: Anim
   const title = anime.title.english || anime.title.romaji;
   
   const [malScore, setMalScore] = useState<number | null>(null);
+  const [showAllTags, setShowAllTags] = useState(false);
 
   useEffect(() => {
     if (anime.idMal) {
@@ -105,14 +107,45 @@ export function AnimeInfo({ anime, className, hideTitle = false }: { anime: Anim
 
       <div className="flex flex-wrap gap-2 mb-6">
         {anime.genres?.map(genre => (
-          <span 
+          <Link
             key={genre}
-            className="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-xs font-bold border border-white/5"
+            to={`/explore?genre=${encodeURIComponent(genre)}`}
+            className="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-xs font-bold border border-white/5 hover:bg-primary/20 hover:text-primary transition-colors"
           >
             {genre}
-          </span>
+          </Link>
         ))}
       </div>
+
+      {(() => {
+        const safeTags = anime.tags?.filter(t => !t.isMediaSpoiler) || [];
+        if (safeTags.length === 0) return null;
+        
+        const displayedTags = showAllTags ? safeTags : safeTags.slice(0, 5);
+        const hasMoreTags = safeTags.length > 5;
+
+        return (
+          <div className="flex flex-wrap items-center gap-2 mb-6">
+            {displayedTags.map(tag => (
+              <Link
+                key={tag.name}
+                to={`/explore?search=${encodeURIComponent(tag.name)}`}
+                className="px-2 py-0.5 bg-gray-800/50 text-gray-400 rounded-md text-xs border border-white/5 hover:bg-gray-700 hover:text-gray-200 transition-colors"
+              >
+                {tag.name}
+              </Link>
+            ))}
+            {hasMoreTags && (
+              <button
+                onClick={() => setShowAllTags(!showAllTags)}
+                className="px-2 py-0.5 text-gray-500 hover:text-gray-300 text-xs transition-colors"
+              >
+                {showAllTags ? 'Show less' : `+${safeTags.length - 5} more`}
+              </button>
+            )}
+          </div>
+        );
+      })()}
 
       <div 
         className="text-gray-400 text-sm leading-relaxed prose prose-invert max-w-none"
