@@ -13,9 +13,10 @@ export const kitsuClient = {
     if (kitsuCache.has(cacheKey)) return kitsuCache.get(cacheKey);
 
     try {
-      const res = await fetch(`https://kitsu.io/api/edge/mappings?filter[externalSite]=myanimelist/anime&filter[externalId]=${malId}&include=item`);
+      const res = await fetch(`/api/kitsu/mappings/${malId}`);
       if (!res.ok) return null;
       const data = await res.json();
+      
       if (data && data.included && data.included.length > 0) {
         const id = data.included[0].id;
         kitsuCache.set(cacheKey, id);
@@ -56,9 +57,9 @@ export const kitsuClient = {
     
     try {
       const firstOffset = priorityRange ? Math.max(0, Math.floor((priorityRange.start - 1) / limit) * limit) : 0;
-
+      
       // 1. Fetch first chunk of priority
-      const firstRes = await fetch(`https://kitsu.io/api/edge/anime/${kitsuId}/episodes?page[limit]=${limit}&page[offset]=${firstOffset}`);
+      const firstRes = await fetch(`/api/kitsu/anime/${kitsuId}/episodes?limit=${limit}&offset=${firstOffset}`);
       if (!firstRes.ok) {
         cacheEntry.status = 'complete';
         return cacheEntry.episodes;
@@ -121,7 +122,7 @@ export const kitsuClient = {
         for (let i = 0; i < offsets.length; i += chunkSize) {
           const chunk = offsets.slice(i, i + chunkSize);
           const results = await Promise.all(chunk.map(offset => 
-            fetch(`https://kitsu.io/api/edge/anime/${kitsuId}/episodes?page[limit]=${limit}&page[offset]=${offset}`)
+            fetch(`/api/kitsu/anime/${kitsuId}/episodes?limit=${limit}&offset=${offset}`)
               .then(res => res.ok ? res.json() : null)
               .catch(() => null)
           ));
@@ -170,7 +171,7 @@ export const kitsuClient = {
     if (kitsuCache.has(cacheKey)) return kitsuCache.get(cacheKey);
 
     try {
-      const res = await fetch(`https://kitsu.io/api/edge/anime/${kitsuId}`);
+      const res = await fetch(`/api/kitsu/anime/${kitsuId}`);
       if (!res.ok) return null;
       const data = await res.json();
       kitsuCache.set(cacheKey, data.data);

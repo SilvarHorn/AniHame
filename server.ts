@@ -82,6 +82,54 @@ async function startServer() {
     }
   });
 
+  // Kitsu API Proxies
+  app.get("/api/kitsu/mappings/:malId", async (req, res) => {
+    try {
+      const { malId } = req.params;
+      const response = await axios.get(`https://kitsu.io/api/edge/mappings?filter[externalSite]=myanimelist/anime&filter[externalId]=${malId}&include=item`, {
+        headers: {
+          'Accept': 'application/vnd.api+json',
+          'Content-Type': 'application/vnd.api+json'
+        }
+      });
+      res.json(response.data);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/kitsu/anime/:kitsuId/episodes", async (req, res) => {
+    try {
+      const { kitsuId } = req.params;
+      const limit = req.query.limit || 20;
+      const offset = req.query.offset || 0;
+      const response = await axios.get(`https://kitsu.io/api/edge/anime/${kitsuId}/episodes?page[limit]=${limit}&page[offset]=${offset}`, {
+        headers: {
+          'Accept': 'application/vnd.api+json',
+          'Content-Type': 'application/vnd.api+json'
+        }
+      });
+      res.json(response.data);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/kitsu/anime/:kitsuId", async (req, res) => {
+    try {
+      const { kitsuId } = req.params;
+      const response = await axios.get(`https://kitsu.io/api/edge/anime/${kitsuId}`, {
+        headers: {
+          'Accept': 'application/vnd.api+json',
+          'Content-Type': 'application/vnd.api+json'
+        }
+      });
+      res.json(response.data);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/filler/:animeName", async (req, res) => {
     const animeName = req.params.animeName;
     const url = `https://www.animefillerlist.com/shows/${animeName}`;
