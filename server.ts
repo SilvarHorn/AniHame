@@ -1,6 +1,17 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
+import axios from "axios";
+import * as cheerio from "cheerio";
+
+function expandRange(range: string): number[] {
+    const [start, end] = range.split('-').map(Number);
+    const expandedRange: number[] = [];
+    for (let i = start; i <= end; i++) {
+        expandedRange.push(i);
+    }
+    return expandedRange;
+}
 
 async function startServer() {
   const app = express();
@@ -71,6 +82,39 @@ async function startServer() {
     }
   });
 
+  app.get("/api/filler/:animeName", async (req, res) => {
+    const animeName = req.params.animeName;
+    const url = `https://www.animefillerlist.com/shows/${animeName}`;
+    try {
+        const response = await axios.get(url, { validateStatus: () => true });
+        if (response.status === 200) {
+            const html = response.data;
+            const $ = cheerio.load(html);
+            const fillerEpisodes: number[] = [];
+            
+            $('div.filler span.Label').each((index, element) => {
+                if ($(element).text().trim() === 'Filler Episodes:') {
+                    const fillerEpisode = $(element).next().text().trim();
+                    const episodes = fillerEpisode.split(',').map(ep => {
+                        if (ep.includes('-')) {
+                            return expandRange(ep.trim());
+                        } else {
+                            return [Number(ep.trim())];
+                        }
+                    });
+                    episodes.forEach(arr => fillerEpisodes.push(...arr));
+                }
+            });
+            res.json({ fillerEpisodes });
+        } else {
+            res.json({ fillerEpisodes: [] });
+        }
+    } catch (error) {
+        console.error("Filler Scrape Error:", error);
+        res.json({ fillerEpisodes: [] }); // Fail gracefully
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -80,7 +124,7 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    app.use(express.static(distPath, { maxAge: '1y' }));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });

@@ -37,34 +37,37 @@ export default function ContinueWatching() {
                 exit={{ opacity: 0, scale: 0.8, filter: 'blur(4px)' }}
                 transition={{ duration: 0.3 }}
                 key={item.animeId} 
-                className="relative flex-[0_0_200px] sm:flex-[0_0_220px] group"
+                className="relative shrink-0 w-44 sm:w-48 md:w-56 lg:w-64 group"
               >
               <Link 
                 to={`/watch/${item.animeId}/${item.lastEpisodeWatched}`}
-                className="block relative cursor-pointer"
+                className="flex flex-col group/card cursor-pointer bg-[#0F1115] rounded-2xl overflow-hidden border border-white/5 shadow-lg transition-transform hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/10"
               >
-                <div className="relative h-28 rounded-lg overflow-hidden bg-gray-800 mb-2 border border-white/5">
+                <div className="relative aspect-[16/9] overflow-hidden bg-gray-900">
                   <img 
                     src={item.coverImage} 
                     alt={item.animeTitle} 
-                    className="absolute inset-0 w-full h-full object-cover"
+                    className="absolute inset-0 w-full h-full object-cover object-[center_20%] transition-transform duration-500 group-hover/card:scale-105"
                   />
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-[#0B0C0F]">
-                      <Play size={20} fill="currentColor" className="ml-1" />
+                  <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#0F1115] via-transparent to-transparent opacity-90" />
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity">
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-primary flex items-center justify-center text-[#0B0C0F] shadow-[0_0_20px_rgba(83,131,232,0.4)]">
+                      <Play size={24} fill="currentColor" className="ml-1" />
                     </div>
                   </div>
-                  <div className="absolute bottom-0 left-0 h-1 bg-primary" style={{ width: '75%', boxShadow: '0 0 10px #8AD7D0' }}></div>
+                  <div className="absolute bottom-0 left-0 h-1 bg-primary z-20" style={{ width: '75%', boxShadow: '0 0 10px var(--theme-color)' }}></div>
                 </div>
-                <h3 className="text-xs font-semibold text-[#EDF1F5] truncate group-hover:text-primary transition-colors">
-                  {item.animeTitle}
-                </h3>
-                <p className="text-[10px] text-gray-500">
-                  Episode {item.lastEpisodeWatched}
-                </p>
+                <div className="p-3 pt-2 pb-4 flex flex-col gap-1 z-10 relative bg-[#0F1115]">
+                  <h3 className="text-[11px] font-bold text-[#EDF1F5] truncate group-hover/card:text-primary transition-colors">
+                    {item.animeTitle}
+                  </h3>
+                  <p className="text-[10px] font-medium text-gray-400">
+                    Ep {item.lastEpisodeWatched}
+                  </p>
+                </div>
               </Link>
               <button 
-                className="absolute top-2 right-2 bg-black/60 hover:bg-red-500/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                className="absolute top-2 right-2 bg-black/60 hover:bg-red-500/80 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20 shadow-lg"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -77,9 +80,9 @@ export default function ContinueWatching() {
               </motion.div>
             ))}
           </AnimatePresence>
-          <motion.div layout className="relative flex-[0_0_200px] sm:flex-[0_0_220px]">
-            <Link to="/continue-watching" className="flex items-center justify-center border-2 border-dashed border-gray-800 rounded-lg h-28 text-gray-700 hover:text-gray-500 hover:border-gray-700 transition-colors text-[10px] font-bold">
-              + MORE ACTIVE SERIES
+          <motion.div layout className="relative shrink-0 w-44 sm:w-48 md:w-56 lg:w-64">
+            <Link to="/continue-watching" className="flex flex-col items-center justify-center border-2 border-dashed border-gray-800 rounded-2xl h-full min-h-[96px] text-gray-700 hover:text-gray-500 hover:border-gray-700 transition-colors p-4 text-center">
+              <span className="text-[10px] font-bold">+ MORE</span>
             </Link>
           </motion.div>
         </div>

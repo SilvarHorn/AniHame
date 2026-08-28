@@ -1,7 +1,18 @@
 export const ANILIST_API_URL = 'https://graphql.anilist.co';
 
+
+const requestCache = new Map<string, { data: any, timestamp: number }>();
+const CACHE_TTL = 1000 * 60 * 5; // 5 minutes cache
+
 export async function fetchAnilist<T = any>(query: string, variables: any = {}, retries = 5): Promise<T> {
+  const cacheKey = query + JSON.stringify(variables);
+  const cached = requestCache.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+    return cached.data as T;
+  }
+
   for (let i = 0; i < retries; i++) {
+
     try {
       const response = await fetch(ANILIST_API_URL, {
         method: 'POST',
@@ -16,6 +27,11 @@ export async function fetchAnilist<T = any>(query: string, variables: any = {}, 
       if (json && json.errors) {
         throw new Error(json.errors[0].message);
       }
+
+      if (response.ok && json && !json.errors) {
+        requestCache.set(cacheKey, { data: json.data, timestamp: Date.now() });
+      }
+      
       if (!response.ok) {
         if (response.status === 429) {
           const delay = parseInt(response.headers.get('Retry-After') || '0') * 1000 || (1000 * Math.pow(2, i) + Math.random() * 1000);
@@ -66,6 +82,9 @@ export const TRENDING_ANIME_QUERY = `
 export const AIRING_SCHEDULE_QUERY = `
   query($page: Int = 1, $perPage: Int = 50, $airingAt_greater: Int, $airingAt_lesser: Int) {
     Page(page: $page, perPage: $perPage) {
+      pageInfo {
+        hasNextPage
+      }
       airingSchedules(airingAt_greater: $airingAt_greater, airingAt_lesser: $airingAt_lesser, sort: TIME) {
         id
         airingAt
@@ -73,6 +92,7 @@ export const AIRING_SCHEDULE_QUERY = `
         media {
           id
           countryOfOrigin
+          isAdult
           title {
             romaji
             english
@@ -104,6 +124,7 @@ export const MEDIA_FRAGMENT = `
     }
     bannerImage
     averageScore
+    isAdult
     description(asHtml: true)
     episodes
     status

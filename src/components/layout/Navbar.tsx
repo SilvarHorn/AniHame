@@ -10,7 +10,7 @@ export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [previewResults, setPreviewResults] = useState<AnimeMedia[]>([]);
 const [showPreview, setShowPreview] = useState(false);
-  const { profile, currentUser } = useAuth();
+  const { profile } = useAuth();
   const [localAvatar, setLocalAvatar] = useState('');
   const [localUsername, setLocalUsername] = useState('');
   const navigate = useNavigate();
@@ -125,7 +125,6 @@ const [showPreview, setShowPreview] = useState(false);
           </div>
 
           <div className="hidden md:flex items-center gap-4">
-            {!currentUser && <Link to="/auth" className="text-xs font-bold px-4 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-all">Sign In</Link>}
             <Link 
               to="/profile"
               className="flex items-center gap-3 ml-2 group"
@@ -154,7 +153,6 @@ const [showPreview, setShowPreview] = useState(false);
             <Link to="/explore" onClick={() => setIsMobileMenuOpen(false)} className={getMobileNavClass('/explore')}>Explore</Link>
             <Link to="/trending" onClick={() => setIsMobileMenuOpen(false)} className={getMobileNavClass('/trending')}>Trending</Link>
             <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)} className={getMobileNavClass('/profile')}>My List</Link>
-            {!currentUser && <Link to="/auth" onClick={() => setIsMobileMenuOpen(false)} className={getMobileNavClass('/auth')}>Sign In</Link>}
             <Link to="/schedule" onClick={() => setIsMobileMenuOpen(false)} className={getMobileNavClass('/schedule')}>Schedule</Link>
           </div>
           <div className="relative mb-2">

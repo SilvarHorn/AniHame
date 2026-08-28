@@ -19,9 +19,12 @@ export default function Watch() {
   const [isListView, setIsListView] = useState(false);
   const [episodeChunk, setEpisodeChunk] = useState(0);
   const [audioType, setAudioType] = useState<'sub' | 'dub'>('sub');
-  const [serverType, setServerType] = useState<'ani' | 'mal' | 'vidsrc'>('ani');
+  const [serverType, setServerType] = useState<'mal' | 'vidsrc'>('mal');
   const [imdbId, setImdbId] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [kitsuEpisodes, setKitsuEpisodes] = useState<any[]>([]);
+  const [fillerEpisodes, setFillerEpisodes] = useState<number[]>([]);
+  const [watchedEpisodes, setWatchedEpisodes] = useState<number[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -48,8 +51,14 @@ export default function Watch() {
   useEffect(() => {
     if (currentEp) {
       setEpisodeChunk(Math.floor((currentEp - 1) / 25));
+      const watchedKey = `watched_eps_${animeId}`;
+      const watchedSet = new Set<number>(JSON.parse(localStorage.getItem(watchedKey) || '[]'));
+      watchedSet.add(currentEp);
+      const arr = Array.from(watchedSet);
+      localStorage.setItem(watchedKey, JSON.stringify(arr));
+      setWatchedEpisodes(arr);
     }
-  }, [currentEp]);
+  }, [currentEp, animeId]);
 
   useEffect(() => {
     const loadDetails = async () => {
@@ -57,14 +66,55 @@ export default function Watch() {
       try {
         const data = await fetchAnilist(ANIME_DETAILS_QUERY, { id: animeId });
         if (data?.Media) {
+          if (data.Media.isAdult) {
+            setError('Content restricted.');
+            return;
+          }
           setAnime(data.Media);
+
+          const aTitle = data.Media.title.english || data.Media.title.romaji;
+          if (aTitle) {
+            const formattedName = aTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+            fetch(`/api/filler/${formattedName}`)
+              .then(res => res.json())
+              .then(d => {
+                if (d.fillerEpisodes) setFillerEpisodes(d.fillerEpisodes);
+              })
+              .catch(console.error);
+          }
+
           // Fetch mapping
           fetch(`/api/mapping/${animeId}`)
             .then(res => res.json())
-            .then(mapping => {
+            .then(async mapping => {
+              let iId = null;
               if (mapping && mapping.imdb_id && mapping.imdb_id.length > 0) {
-                const iId = Array.isArray(mapping.imdb_id) ? mapping.imdb_id[0] : mapping.imdb_id;
+                iId = Array.isArray(mapping.imdb_id) ? mapping.imdb_id[0] : mapping.imdb_id;
                 setImdbId(iId);
+              }
+              
+              if (data.Media.idMal) {
+                try {
+                  const { kitsuClient } = await import('../api/kitsu');
+                  const kitsuId = await kitsuClient.getKitsuIdByMalId(data.Media.idMal);
+                  if (kitsuId) {
+                    const currentEpNum = isNaN(currentEp) ? 1 : currentEp;
+                    const pStart = Math.max(1, Math.floor((currentEpNum - 1) / 100) * 100 + 1);
+                    const pEnd = pStart + 99;
+                    const epData = await kitsuClient.getEpisodes(
+                      kitsuId,
+                      { start: pStart, end: pEnd },
+                      (newEps) => {
+                        setKitsuEpisodes([...newEps]);
+                      }
+                    );
+                    if (epData && epData.length > 0) {
+                      setKitsuEpisodes([...epData]);
+                    }
+                  }
+                } catch (e) {
+                  console.error('Failed to fetch Kitsu episodes', e);
+                }
               }
             })
             .catch(err => console.error("Failed to fetch mapping", err));
@@ -150,31 +200,60 @@ export default function Watch() {
     episodes = episodes.reverse();
   }
 
-let iframeUrl = '';
+  let iframeUrl = '';
   if (serverType === 'vidsrc' && imdbId) {
     if (anime?.format === 'MOVIE') {
       iframeUrl = `https://vidsrc2.ru/embed/movie/${imdbId}`;
     } else {
       iframeUrl = `https://vidsrc2.ru/embed/tv/${imdbId}/1/${currentEp}`;
     }
-  } else if (serverType === 'mal' && anime?.idMal) {
-    iframeUrl = `https://megaplay.buzz/stream/mal/${anime.idMal}/${currentEp}/${audioType}`;
   } else {
-    iframeUrl = `https://megaplay.buzz/stream/ani/${animeId}/${currentEp}/${audioType}`;
+    // Default to MAL
+    iframeUrl = `https://megaplay.buzz/stream/mal/${anime?.idMal || animeId}/${currentEp}/${audioType}`;
   }
+
+  const handleIframeError = () => {
+    if (serverType === 'mal') {
+      if (imdbId) setServerType('vidsrc');
+    } else if (serverType === 'vidsrc') {
+      if (anime?.idMal) setServerType('mal');
+    }
+  };
 
   const episodeTitleMap = new Map<number, string>();
   const episodeThumbMap = new Map<number, string>();
   
+  if (kitsuEpisodes && kitsuEpisodes.length > 0) {
+    kitsuEpisodes.forEach((ep: any) => {
+      if (ep.num) {
+        if (ep.title) {
+          episodeTitleMap.set(ep.num, ep.title);
+        }
+        if (ep.thumbnail) {
+          episodeThumbMap.set(ep.num, ep.thumbnail);
+        }
+      }
+    });
+  }
+  
   if (anime?.streamingEpisodes) {
     anime.streamingEpisodes.forEach(episode => {
-      const match = episode.title.match(/Episode\s+(\d+)(?:\s*[-:]\s*(.*))?/i);
+      const match = episode.title.match(/Episode\s+(\d+)(?:[\s\-:]+(.*))?/i);
       if (match) {
         const epNum = parseInt(match[1]);
-        if (match[2]) {
-          episodeTitleMap.set(epNum, match[2].trim());
+        const aniListTitle = match[2]?.trim();
+        const existingTitle = episodeTitleMap.get(epNum);
+        
+        // If Kitsu didn't provide a title, or if Kitsu's title is just "Episode X"
+        const kitsuMissingOrGeneric = !existingTitle || existingTitle.match(/^Episode\s+\d+$/i) || existingTitle === `Episode ${epNum}`;
+        
+        if (aniListTitle && !aniListTitle.match(/^Episode\s+\d+$/i) && kitsuMissingOrGeneric) {
+          episodeTitleMap.set(epNum, aniListTitle);
+        } else if (!existingTitle && episode.title && !episode.title.match(/^Episode\s+\d+$/i) && kitsuMissingOrGeneric) {
+          episodeTitleMap.set(epNum, episode.title);
         }
-        if (episode.thumbnail) {
+
+        if (episode.thumbnail && !episodeThumbMap.has(epNum)) {
           episodeThumbMap.set(epNum, episode.thumbnail);
         }
       }
@@ -206,6 +285,7 @@ let iframeUrl = '';
                 allowFullScreen
                 className="absolute inset-0 w-full h-full border-none"
                 title={`Watch ${anime.title.romaji} Episode ${currentEp}`}
+                onError={handleIframeError}
               ></iframe>
             </div>
           </div>
@@ -259,15 +339,6 @@ let iframeUrl = '';
             <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 flex-wrap justify-center w-full lg:w-auto">
               {/* Server Selector */}
               <div className="flex items-center bg-gray-800 rounded-lg p-1 w-full sm:w-auto justify-center">
-                <button
-                  onClick={() => setServerType('ani')}
-                  className={cn(
-                    "flex-1 sm:flex-none px-3 sm:px-4 py-1.5 rounded-md text-xs sm:text-sm font-bold transition-colors",
-                    serverType === 'ani' ? "bg-primary text-[#0B0C0F] shadow-sm" : "text-gray-400 hover:text-gray-200"
-                  )}
-                >
-                  AniList
-                </button>
                 <button
                   onClick={() => setServerType('mal')}
                   disabled={!anime?.idMal}
@@ -404,14 +475,21 @@ let iframeUrl = '';
               ? "flex flex-col gap-3" 
               : "grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-5"
           )}>
-          {episodes.map(epNum => (
-            isListView ? (
+          {episodes.map(epNum => {
+            const isFiller = fillerEpisodes.includes(epNum);
+            const isWatched = watchedEpisodes.includes(epNum) && epNum !== currentEp;
+            return isListView ? (
               <Link
                 key={epNum}
                 to={`/watch/${anime.id}/${epNum}`}
                 className={cn(
-                  "flex items-center gap-4 bg-gray-800 hover:bg-gray-700 hover:border-primary/50 border rounded-xl p-3 lg:min-h-[100px] lg:p-4 font-bold text-sm text-gray-300 transition-all shadow-lg group relative overflow-hidden",
-                  epNum === currentEp ? "border-primary/50 ring-1 ring-primary/50" : "border-white/5"
+                  "flex items-center gap-4 hover:border-primary/50 border rounded-xl p-3 lg:min-h-[100px] lg:p-4 font-bold text-sm transition-all shadow-lg group relative overflow-hidden",
+                  epNum === currentEp 
+                    ? "border-primary/50 ring-1 ring-primary/50 bg-gray-800" 
+                    : isFiller 
+                      ? "bg-[#f97316]/10 hover:bg-[#f97316]/20 border-[#f97316]/30"
+                      : "bg-gray-800 hover:bg-gray-700 border-white/5 text-gray-300",
+                  isWatched && "opacity-50 grayscale hover:grayscale-0 hover:opacity-100"
                 )}
               >
                 <div className="w-24 sm:w-32 lg:w-40 aspect-video flex-shrink-0 relative rounded-lg overflow-hidden bg-gray-900">
@@ -420,24 +498,35 @@ let iframeUrl = '';
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                     alt={`Episode ${epNum}`} 
                   />
+                  {isFiller && <div className="absolute inset-0 bg-[#f97316]/20 pointer-events-none mix-blend-color" />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex flex-col mb-1">
-                    <span className={cn("text-lg font-black leading-tight", epNum === currentEp ? "text-primary" : "text-white")}>Ep {epNum}</span>
-                    <span className="text-xs font-medium text-gray-400 truncate group-hover:text-white transition-colors">
-                      {episodeTitleMap.get(epNum) || `Episode ${epNum}`}
-                    </span>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className={cn("text-lg font-black leading-tight shrink-0", epNum === currentEp ? "text-primary" : isFiller ? "text-[#f97316]" : "text-white")}>Ep {epNum}</span>
+                      {isFiller && <span className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full bg-[#f97316]/20 text-[#f97316] border border-[#f97316]/30 font-bold tracking-wider shrink-0">FILLER</span>}
+                    </div>
+                    <MarqueeText 
+                      text={episodeTitleMap.get(epNum) || `Episode ${epNum}`}
+                      className={cn("text-xs sm:text-sm font-medium transition-colors", isFiller ? "text-[#f97316]/80 group-hover:text-[#f97316]" : "text-gray-400 group-hover:text-white")}
+                      align="left"
+                    />
                   </div>
                 </div>
-                <PlayCircle size={24} className={cn("mr-2 flex-shrink-0 transition-colors", epNum === currentEp ? "text-primary" : "text-gray-500 group-hover:text-primary")} />
+                <PlayCircle size={24} className={cn("mr-2 flex-shrink-0 transition-colors", epNum === currentEp ? "text-primary" : isFiller ? "text-[#f97316]/50 group-hover:text-[#f97316]" : "text-gray-500 group-hover:text-primary")} />
               </Link>
             ) : (
               <Link
                 key={epNum}
                 to={`/watch/${anime.id}/${epNum}`}
                 className={cn(
-                  "relative aspect-square flex-col text-center bg-gray-800 hover:border-primary border rounded-xl flex items-center justify-center transition-all hover:scale-105 hover:-translate-y-1 shadow-lg overflow-hidden group",
-                  epNum === currentEp ? "border-primary ring-1 ring-primary" : "border-white/5"
+                  "relative aspect-square flex-col text-center border rounded-xl flex items-center justify-center transition-all hover:scale-105 hover:-translate-y-1 shadow-lg overflow-hidden group",
+                  epNum === currentEp 
+                    ? "border-primary ring-1 ring-primary bg-gray-800" 
+                    : isFiller
+                      ? "bg-[#f97316]/20 border-[#f97316]/50"
+                      : "bg-gray-800 hover:border-primary border-white/5",
+                  isWatched && "opacity-50 grayscale hover:grayscale-0 hover:opacity-100"
                 )}
               >
                 <div className="absolute inset-0 w-full h-full">
@@ -446,28 +535,29 @@ let iframeUrl = '';
                     alt={`Episode ${epNum}`} 
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-60 group-hover:opacity-30" 
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0B0C0F] via-[#0B0C0F]/40 to-transparent opacity-80" />
+                  <div className={cn("absolute inset-0 opacity-80", isFiller ? "bg-gradient-to-t from-[#f97316]/40 via-[#0B0C0F]/60 to-[#f97316]/10 mix-blend-color" : "bg-gradient-to-t from-[#0B0C0F] via-[#0B0C0F]/40 to-transparent")} />
                 </div>
                 
                 <div className="relative z-10 flex flex-col items-center justify-center w-full h-full p-2">
-                  <div className="absolute inset-0 flex items-center justify-center transition-all duration-300 group-hover:opacity-0 group-hover:scale-90">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center transition-all duration-300 group-hover:opacity-0 group-hover:scale-90">
                     <span className={cn(
                       "text-xl md:text-2xl lg:text-lg xl:text-xl font-black drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]",
-                      epNum === currentEp ? "text-primary" : "text-white"
+                      epNum === currentEp ? "text-primary" : isFiller ? "text-[#f97316]" : "text-white"
                     )}>
                       {epNum}
                     </span>
+                    {isFiller && <span className="text-[10px] font-bold text-[#f97316] bg-black/50 px-1.5 py-0.5 rounded mt-1">FILLER</span>}
                   </div>
                   <div className="absolute inset-0 flex items-center justify-center p-2 opacity-0 group-hover:opacity-100 transition-all duration-300 scale-105 group-hover:scale-100">
                     <MarqueeText 
                       text={episodeTitleMap.get(epNum) || `Episode ${epNum}`}
-                      className="text-[10px] md:text-[11px] text-white font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] leading-tight"
+                      className={cn("text-[10px] md:text-[11px] font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] leading-tight", isFiller ? "text-[#f97316]" : "text-white")}
                     />
                   </div>
                 </div>
               </Link>
             )
-          ))}
+          })}
         </div>
       </div>
 

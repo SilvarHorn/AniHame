@@ -5,8 +5,6 @@ import { User, LogOut, LogIn, Save, Mail, Key, Edit3, Camera, X, Check } from 'l
 import { motion, AnimatePresence } from 'motion/react';
 import Cropper from 'react-easy-crop';
 import { useAuth } from '../contexts/AuthContext';
-import { auth } from '../lib/firebase';
-import { signOut } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import AnimeCard from '../components/ui/AnimeCard';
 import { MyListStatus, getMyList, MyListItem } from '../utils/myList';
@@ -23,14 +21,8 @@ const TABS: { label: string; value: MyListStatus | 'ALL' }[] = [
 ];
 
 export default function Profile() {
-  const { currentUser, profile, loading, updatePreferences, updateProfileData } = useAuth();
+  const { profile, loading, updatePreferences, updateProfileData } = useAuth();
   const navigate = useNavigate();
-  const handleSignOut = async () => {
-    await signOut(auth);
-    navigate("/");
-  };
-  
-      const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
     
   // Local profile state for guests & editing
   const [isEditing, setIsEditing] = useState(false);
@@ -38,7 +30,7 @@ export default function Profile() {
   const [localAvatar, setLocalAvatar] = useState('');
   
   // Preferences state
-  const [defaultServer, setDefaultServer] = useState<'ani' | 'mal' | 'vidsrc'>('ani');
+  const [defaultServer, setDefaultServer] = useState<'mal' | 'vidsrc'>('mal');
   const [defaultAudio, setDefaultAudio] = useState<'sub' | 'dub'>('sub');
   
   // Theme state
@@ -48,6 +40,8 @@ export default function Profile() {
   const [gradColor1, setGradColor1] = useState('#0B0C0F');
   const [gradColor2, setGradColor2] = useState('#243b55');
   const [bgGradient, setBgGradient] = useState('');
+  const [bgImage, setBgImage] = useState('');
+  const [bgOpacity, setBgOpacity] = useState(100);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -57,6 +51,9 @@ export default function Profile() {
   const [page, setPage] = useState(1);
   const itemsPerPage = 24;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bgFileInputRef = useRef<HTMLInputElement>(null);
+  const [isEditingOpacity, setIsEditingOpacity] = useState(false);
+  const [opacityInput, setOpacityInput] = useState('');
   const [cropImageSrc, setCropImageSrc] = useState('');
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -65,14 +62,16 @@ export default function Profile() {
 
   // Sync with AuthContext or LocalStorage
   useEffect(() => {
-    if (currentUser && profile) {
+    if (profile) {
       setLocalDisplayName(profile.displayName || 'User');
       setLocalAvatar(profile.photoURL || '');
-      setDefaultServer(profile.preferences?.defaultServer || 'ani');
+      setDefaultServer(profile.preferences?.defaultServer || 'mal');
       setDefaultAudio(profile.preferences?.defaultAudio || 'sub');
       setThemeColor(profile.themeColor || '#8AD7D0');
       setBgGradient(profile.bgGradient || '');
-    } else if (!currentUser) {
+      setBgImage(profile.bgImage || '');
+      setBgOpacity(profile.bgOpacity ?? 100);
+    } else {
       // Load from local storage for guests
       try {
         const saved = localStorage.getItem('anime_profile');
@@ -82,10 +81,12 @@ export default function Profile() {
           if (parsed.avatar) setLocalAvatar(parsed.avatar);
           if (parsed.themeColor) setThemeColor(parsed.themeColor);
           if (parsed.bgGradient !== undefined) setBgGradient(parsed.bgGradient);
+          if (parsed.bgImage !== undefined) setBgImage(parsed.bgImage);
+          if (parsed.bgOpacity !== undefined) setBgOpacity(parsed.bgOpacity);
         }
       } catch (e) {}
     }
-  }, [currentUser, profile]);
+  }, [profile]);
 
   useEffect(() => {
     setMyList(getMyList());
@@ -137,6 +138,47 @@ export default function Profile() {
     }
   };
 
+  const handleBgImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const MAX_WIDTH = 1280;
+          const MAX_HEIGHT = 720;
+
+          if (width > MAX_WIDTH) {
+            height = Math.floor(height * (MAX_WIDTH / width));
+            width = MAX_WIDTH;
+          }
+          if (height > MAX_HEIGHT) {
+            width = Math.floor(width * (MAX_HEIGHT / height));
+            height = MAX_HEIGHT;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            // Compress aggressively to keep the Firestore doc under 1MB
+            setBgImage(canvas.toDataURL('image/jpeg', 0.5));
+            if (!isEditing) setIsEditing(true);
+          }
+        };
+        img.src = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+      if (bgFileInputRef.current) {
+        bgFileInputRef.current.value = '';
+      }
+    }
+  };
+
   const onCropComplete = (croppedArea: any, croppedAreaPixels: any) => {
     setCroppedAreaPixels(croppedAreaPixels);
   };
@@ -178,13 +220,14 @@ export default function Profile() {
   const handleSaveAll = async () => {
     setIsSaving(true);
     
-    if (currentUser && profile) {
-      // Save to Firebase
+    if (profile) {
       await updateProfileData({
         displayName: localDisplayName,
         photoURL: localAvatar,
         themeColor,
-        bgGradient
+        bgGradient,
+        bgImage,
+        bgOpacity
       });
       await updatePreferences({ defaultServer, defaultAudio });
     } else {
@@ -194,7 +237,9 @@ export default function Profile() {
           username: localDisplayName,
           avatar: localAvatar,
           themeColor,
-          bgGradient
+          bgGradient,
+          bgImage,
+          bgOpacity
         };
         localStorage.setItem('anime_profile', JSON.stringify(localData));
         window.dispatchEvent(new Event('profile-updated'));
@@ -324,7 +369,7 @@ export default function Profile() {
             ) : (
               <h1 className="text-3xl font-bold text-[#EDF1F5] mb-2">{localDisplayName}</h1>
             )}
-            <p className="text-gray-400 max-w-2xl">{currentUser?.email || 'Guest User'}</p>
+            <p className="text-gray-400 max-w-2xl">Guest User</p>
           </div>
           
           <div className="flex items-center gap-3">
@@ -370,41 +415,8 @@ export default function Profile() {
                 </motion.button>
               )}
             </AnimatePresence>
-            
-            <AnimatePresence mode="wait">
-              {currentUser && !isEditing && !showSuccess && (
-                <motion.button 
-                  key="signout"
-                  initial={{ opacity: 0, scale: 0.95, width: 0, paddingLeft: 0, paddingRight: 0, marginLeft: 0 }}
-                  animate={{ opacity: 1, scale: 1, width: 'auto', paddingLeft: 20, paddingRight: 20, marginLeft: 12 }}
-                  exit={{ opacity: 0, scale: 0.95, width: 0, paddingLeft: 0, paddingRight: 0, marginLeft: 0 }}
-                  transition={{ duration: 0.2 }}
-                  onClick={handleSignOut}
-                  className="flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 py-2.5 rounded-xl font-bold transition-colors border border-red-500/20 whitespace-nowrap overflow-hidden"
-                >
-                  <LogOut size={18} />
-                  Sign Out
-                </motion.button>
-              )}
-
-              {!currentUser && !isEditing && !showSuccess && (
-                <motion.button 
-                  key="signin"
-                  initial={{ opacity: 0, scale: 0.95, width: 0, paddingLeft: 0, paddingRight: 0, marginLeft: 0 }}
-                  animate={{ opacity: 1, scale: 1, width: 'auto', paddingLeft: 20, paddingRight: 20, marginLeft: 12 }}
-                  exit={{ opacity: 0, scale: 0.95, width: 0, paddingLeft: 0, paddingRight: 0, marginLeft: 0 }}
-                  transition={{ duration: 0.2 }}
-                  onClick={() => navigate('/auth')}
-                  className="flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary py-2.5 rounded-xl font-bold transition-colors border border-primary/20 whitespace-nowrap overflow-hidden"
-                >
-                  <LogIn size={18} />
-                  Sign In
-                </motion.button>
-              )}
-            </AnimatePresence>
           </div>
         </div>
-
         <div className="border-t border-white/5 pt-8">
           <h2 className="text-xl font-bold text-[#EDF1F5] mb-6 flex items-center gap-3">
             <span className="w-1.5 h-6 bg-primary rounded-full inline-block"></span>
@@ -539,6 +551,79 @@ export default function Profile() {
                 />
               </div>
             </div>
+            
+            <div className="bg-gray-900/50 p-5 rounded-xl border border-white/5 md:col-span-2">
+              <label className="block text-sm font-medium text-gray-400 mb-3">Custom Background Image</label>
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                <div className="flex flex-1 w-full gap-2">
+                  <input 
+                    type="text" 
+                    value={bgImage} 
+                    onChange={(e) => { setBgImage(e.target.value); if(!isEditing) setIsEditing(true); }}
+                    placeholder="https://example.com/image.jpg"
+                    className="bg-[#151F2E] text-[#EDF1F5] px-4 py-2.5 rounded-lg outline-none w-full border border-gray-700 focus:border-primary transition-colors text-sm flex-1"
+                  />
+                  <input 
+                    type="file"
+                    ref={bgFileInputRef}
+                    onChange={handleBgImageUpload}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                  <button 
+                    onClick={() => bgFileInputRef.current?.click()}
+                    className="bg-[#151F2E] border border-gray-700 hover:border-primary hover:text-primary transition-colors text-sm font-bold px-4 rounded-lg shrink-0"
+                  >
+                    Upload
+                  </button>
+                </div>
+                <div className="flex items-center gap-4 w-full sm:w-auto">
+                  <span className="text-sm font-bold text-gray-400 shrink-0">Opacity</span>
+                  <input 
+                    type="range" 
+                    min="10" 
+                    max="100" 
+                    value={bgOpacity} 
+                    onChange={(e) => { setBgOpacity(Number(e.target.value)); if(!isEditing) setIsEditing(true); }}
+                    className="w-full sm:w-32 accent-primary h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                  />
+                  {isEditingOpacity ? (
+                    <input 
+                      type="number"
+                      autoFocus
+                      className="text-sm font-bold bg-[#151F2E] border border-primary outline-none rounded px-1 w-12 text-white"
+                      value={opacityInput}
+                      onChange={(e) => setOpacityInput(e.target.value)}
+                      onBlur={() => {
+                        let val = parseInt(opacityInput);
+                        if (isNaN(val)) val = bgOpacity;
+                        val = Math.max(10, Math.min(100, val));
+                        setBgOpacity(val);
+                        setIsEditingOpacity(false);
+                        if(!isEditing) setIsEditing(true);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.currentTarget.blur();
+                        }
+                      }}
+                    />
+                  ) : (
+                    <span 
+                      className="text-sm font-bold text-white shrink-0 w-8 cursor-pointer hover:text-primary transition-colors"
+                      onClick={() => {
+                        setOpacityInput(bgOpacity.toString());
+                        setIsEditingOpacity(true);
+                      }}
+                      title="Click to edit opacity"
+                    >
+                      {bgOpacity}%
+                    </span>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">When an image URL or file is provided, it overrides the background gradient.</p>
+            </div>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
@@ -546,12 +631,11 @@ export default function Profile() {
               <label className="block text-sm font-medium text-gray-400 mb-3">Default Video Server</label>
               <SingleSelect
                 options={[
-                  { label: 'MegaPlay AniList', value: 'ani' },
                   { label: 'MegaPlay MAL', value: 'mal' },
                   { label: 'VidSrc', value: 'vidsrc' }
                 ]}
                 value={defaultServer}
-                onChange={(val) => { setDefaultServer(val as 'ani' | 'mal' | 'vidsrc'); if(!isEditing) setIsEditing(true); }}
+                onChange={(val) => { setDefaultServer(val as 'mal' | 'vidsrc'); if(!isEditing) setIsEditing(true); }}
               />
             </div>
 

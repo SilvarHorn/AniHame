@@ -4,7 +4,8 @@ import TrendingGrid from '../components/home/TrendingGrid';
 import LatestGrid from '../components/home/LatestGrid';
 import ContinueWatching from '../components/home/ContinueWatching';
 import Timetable from '../components/home/Timetable';
-import { fetchAnilist, TRENDING_ANIME_QUERY, LATEST_UPDATED_ANIME_QUERY } from '../api/anilist';
+import { fetchAnilist, TRENDING_ANIME_QUERY } from '../api/anilist';
+import { fetchLatestUpdated } from '../api/animeschedule';
 import { AnimeMedia } from '../types';
 import { motion } from 'motion/react';
 
@@ -44,7 +45,7 @@ export default function Home() {
   const [latestCountry, setLatestCountry] = useState(getProfileRegion);
   const [latestPage, setLatestPage] = useState(1);
   const [latestHasNext, setLatestHasNext] = useState(false);
-  const [isFetchingLatest, setIsFetchingLatest] = useState(false);
+  const [isFetchingLatest, setIsFetchingLatest] = useState(true);
   const [error, setError] = useState('');
 
   // Fetch Trending
@@ -76,14 +77,10 @@ export default function Home() {
       setIsFetchingLatest(true);
       setError('');
       try {
-        const data = await fetchAnilist(LATEST_UPDATED_ANIME_QUERY, { 
-          page: latestPage, 
-          perPage: 24,
-          countryOfOrigin: latestCountry || undefined
-        });
+        const data = await fetchLatestUpdated(latestPage, 24);
         if (isMounted) {
-          setLatest(data?.Page?.media || []);
-          setLatestHasNext(data?.Page?.pageInfo?.hasNextPage || false);
+          setLatest(data.media || []);
+          setLatestHasNext(data.pageInfo?.hasNextPage || false);
         }
       } catch (err) {
         if (isMounted) {
@@ -124,14 +121,13 @@ export default function Home() {
         <Banner trending={trending} />
       </motion.div>
 
-      {/* Rest of the page waits for the Banner to finish loading before mounting and staggering in */}
-      {!loading && (
-        <motion.div 
-          className="flex-1 flex flex-col p-4 md:p-6 lg:px-8 gap-6 w-full"
-          variants={containerVariants}
-          initial="hidden"
-          animate="show"
-        >
+      {/* Rest of the page mounts immediately, grids handle their own loading state */}
+      <motion.div 
+        className="flex-1 flex flex-col p-4 md:p-6 lg:px-8 gap-6 w-full"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
         <motion.div variants={itemVariants}>
           <ContinueWatching />
         </motion.div>
@@ -149,14 +145,13 @@ export default function Home() {
             />
           </motion.div>
           <motion.div variants={itemVariants}>
-            <TrendingGrid trending={trending} country={trendingCountry} onCountryChange={setTrendingCountry} />
+            <TrendingGrid trending={trending} country={trendingCountry} onCountryChange={setTrendingCountry} isLoading={loading} />
           </motion.div>
           <motion.div variants={itemVariants} className="w-full">
             <Timetable />
           </motion.div>
         </div>
-        </motion.div>
-      )}
+      </motion.div>
     </div>
   );
 }

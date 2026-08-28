@@ -36,7 +36,8 @@ export default function Timetable() {
         });
         
         if (data?.Page?.airingSchedules) {
-          setSchedule(data.Page.airingSchedules);
+          const filtered = data.Page.airingSchedules.filter((s: any) => !s.media?.isAdult);
+          setSchedule(filtered);
         }
       } catch (err) {
         console.error('Error fetching schedule:', err);

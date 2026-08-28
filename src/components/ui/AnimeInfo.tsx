@@ -7,16 +7,40 @@ import { cn } from '../../lib/utils';
 export function AnimeInfo({ anime, className, hideTitle = false }: { anime: AnimeMedia, className?: string, hideTitle?: boolean }) {
   const title = anime.title.english || anime.title.romaji;
   
+  const [kitsuScore, setKitsuScore] = useState<number | null>(null);
   const [malScore, setMalScore] = useState<number | null>(null);
+  const [ageRating, setAgeRating] = useState<string | null>(null);
   const [showAllTags, setShowAllTags] = useState(false);
 
   useEffect(() => {
     if (anime.idMal) {
+      import('../../api/kitsu').then(({ kitsuClient }) => {
+        kitsuClient.getKitsuIdByMalId(anime.idMal).then(kitsuId => {
+          if (kitsuId) {
+            kitsuClient.getAnime(kitsuId).then(data => {
+              if (data?.attributes?.averageRating) {
+                setKitsuScore(parseFloat(data.attributes.averageRating));
+              }
+              if (data?.attributes?.ageRating) {
+                let rating = data.attributes.ageRating;
+                if (data.attributes.ageRatingGuide) {
+                  rating += ` (${data.attributes.ageRatingGuide})`;
+                }
+                setAgeRating(rating);
+              }
+            });
+          }
+        });
+      }).catch(err => console.error("Failed to fetch Kitsu score", err));
+
       fetch(`https://api.jikan.moe/v4/anime/${anime.idMal}`)
         .then(res => res.json())
         .then(data => {
           if (data?.data?.score) {
             setMalScore(data.data.score);
+          }
+          if (data?.data?.rating && !ageRating) {
+            setAgeRating(data.data.rating);
           }
         })
         .catch(err => console.error("Failed to fetch MAL score", err));
@@ -63,6 +87,25 @@ export function AnimeInfo({ anime, className, hideTitle = false }: { anime: Anim
           <span>{anime.averageScore}%</span>
         </div>
         
+        {ageRating && (
+          <>
+            <div className="w-1.5 h-1.5 rounded-full bg-gray-600" />
+            <div className="flex items-center gap-1.5 text-gray-300">
+              <span className="px-2 py-0.5 rounded text-[11px] font-bold border border-gray-600 uppercase tracking-wider">{ageRating}</span>
+            </div>
+          </>
+        )}
+
+        {kitsuScore && (
+          <>
+            <div className="w-1.5 h-1.5 rounded-full bg-gray-600" />
+            <div className="flex items-center gap-1.5 text-[#FD755C] drop-shadow-sm">
+              <Star size={16} fill="currentColor" />
+              <span>Kitsu: {kitsuScore}%</span>
+            </div>
+          </>
+        )}
+
         {malScore && (
           <>
             <div className="w-1.5 h-1.5 rounded-full bg-gray-600" />

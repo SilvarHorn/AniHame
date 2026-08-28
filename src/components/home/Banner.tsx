@@ -54,6 +54,7 @@ export default function Banner({ trending }: BannerProps) {
                   <img
                     src={anime.bannerImage || anime.coverImage.extraLarge}
                     alt={anime.title.english || anime.title.romaji}
+                    fetchPriority="high"
                     className="w-full h-full object-cover object-center scale-[1.15]"
                   />
                 </div>

@@ -4,6 +4,8 @@ import Navbar from './Navbar';
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [themeColor, setThemeColor] = useState('#8AD7D0');
   const [bgGradient, setBgGradient] = useState('');
+  const [bgImage, setBgImage] = useState('');
+  const [bgOpacity, setBgOpacity] = useState(100);
   
   useEffect(() => {
     const handleStorageChange = () => {
@@ -18,6 +20,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           }
           if (parsed.bgGradient !== undefined) {
             setBgGradient(parsed.bgGradient);
+          }
+          if (parsed.bgImage !== undefined) {
+            setBgImage(parsed.bgImage);
+          }
+          if (parsed.bgOpacity !== undefined) {
+            setBgOpacity(parsed.bgOpacity);
           }
         }
       } catch (e) {}
@@ -39,13 +47,29 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div 
-      className="min-h-screen text-[#EDF1F5] font-sans selection:bg-primary/30 bg-fixed relative overflow-hidden"
+      className="min-h-screen text-[#EDF1F5] font-sans selection:bg-primary/30 bg-fixed relative overflow-hidden bg-[#0B0C0F]"
       style={
-        bgGradient?.includes('gradient')
+        !bgImage && bgGradient?.includes('gradient')
           ? { backgroundImage: bgGradient }
-          : { backgroundColor: bgGradient || '#0B0C0F' }
+          : !bgImage 
+            ? { backgroundColor: bgGradient || '#0B0C0F' }
+            : {}
       }
     >
+      {bgImage && (
+        <>
+          <div 
+            className="fixed inset-0 z-0 pointer-events-none bg-cover bg-center bg-no-repeat bg-fixed"
+            style={{ 
+              backgroundImage: `url(${bgImage})`,
+              opacity: bgOpacity / 100 
+            }}
+          />
+          {/* Fallback solid background behind the image so it blends if opacity < 100 */}
+          <div className="fixed inset-0 z-[-1] bg-[#0B0C0F] pointer-events-none" />
+        </>
+      )}
+
       {/* Repeating Pattern for empty margins on ultra-wide screens */}
       <div 
         className="fixed inset-0 z-0 pointer-events-none hidden xl:block opacity-[0.03]"

@@ -1,6 +1,7 @@
 import React from 'react';
 import { AnimeMedia } from '../../types';
 import AnimeCard from '../ui/AnimeCard';
+import AnimeCardSkeleton from '../ui/AnimeCardSkeleton';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -25,7 +26,7 @@ export default function LatestGrid({
   onNextPage,
   onPrevPage
 }: LatestGridProps) {
-  if (!latest || latest.length === 0) return null;
+  if (!isLoading && (!latest || latest.length === 0)) return null;
 
   const cols = {
     base: 3,
@@ -54,7 +55,7 @@ export default function LatestGrid({
   ].join(' ');
 
   const maxItemsToShow = cols['2xl'] * 2;
-  const dataKey = latest.map(a => a?.id).join('-');
+  const dataKey = isLoading ? `loading-${page}` : latest.map(a => a?.id).join('-');
 
   return (
     <div className="flex flex-col h-full w-full mt-6">
@@ -78,15 +79,6 @@ export default function LatestGrid({
               <ChevronRight size={16} />
             </button>
           </div>
-          <select 
-            value={country} 
-            onChange={(e) => onCountryChange(e.target.value)}
-            className="bg-[#151F2E] border border-gray-700 text-gray-400 text-[10px] uppercase font-bold rounded px-2 py-0.5 focus:outline-none focus:border-primary"
-          >
-            <option value="">All Regions</option>
-            <option value="JP">Japanese</option>
-            <option value="CN">Chinese</option>
-          </select>
           <div className="flex gap-2">
              <span className="w-2 h-2 rounded-full bg-primary"></span>
              <span className="w-2 h-2 rounded-full bg-gray-700"></span>
@@ -103,10 +95,20 @@ export default function LatestGrid({
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
             className={gridClasses}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.2}
+            onDragEnd={(e, { offset, velocity }) => {
+              if (isLoading) return;
+              const swipe = offset.x;
+              if (swipe < -50 && hasNextPage) {
+                onNextPage?.();
+              } else if (swipe > 50 && page > 1) {
+                onPrevPage?.();
+              }
+            }}
           >
             {Array.from({ length: maxItemsToShow }).map((_, index) => {
-              const anime = latest[index];
-
               const visibilityClass = [
                 index < cols.base * 2 ? 'block' : 'hidden',
                 index < cols.sm * 2 ? 'sm:block' : 'sm:hidden',
@@ -116,6 +118,15 @@ export default function LatestGrid({
                 index < cols['2xl'] * 2 ? '2xl:block' : '2xl:hidden'
               ].join(' ');
 
+              if (isLoading) {
+                return (
+                  <div key={`skeleton-${index}`} className={visibilityClass}>
+                    <AnimeCardSkeleton />
+                  </div>
+                );
+              }
+
+              const anime = latest[index];
               if (anime) {
                 let latestEp = anime.episodes || 1;
                 if (anime.nextAiringEpisode) {

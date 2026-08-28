@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { fetchAnilist, SEARCH_ANIME_QUERY } from '../api/anilist';
 import { AnimeMedia } from '../types';
 import AnimeCard from '../components/ui/AnimeCard';
+import AnimeCardSkeleton from '../components/ui/AnimeCardSkeleton';
 import MultiSelect from '../components/ui/MultiSelect';
 import SingleSelect from '../components/ui/SingleSelect';
 import { motion, AnimatePresence } from 'motion/react';
@@ -206,13 +207,13 @@ export default function Explore() {
         <AnimatePresence>
           {showFilters && (
             <motion.div
-              initial={{ opacity: 0, height: 0, overflow: 'hidden' }}
-              animate={{ opacity: 1, height: 'auto', transitionEnd: { overflow: 'visible' } }}
-              exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="relative z-40"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="absolute left-0 right-0 top-full mt-2 z-50 shadow-2xl"
             >
-              <div className="bg-[#151F2E]/80 border border-primary/20 rounded-xl p-5 md:p-6 mt-2">
+              <div className="bg-[#0B0C0F]/95 border border-primary/30 rounded-xl p-5 md:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-xl">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
                   {/* Sort */}
                   <div className="flex flex-col gap-2">
@@ -293,7 +294,11 @@ export default function Explore() {
       </div>
 
       {loading && searchResults.length === 0 ? (
-        <div className="min-h-[400px]"></div>
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8 gap-4 md:gap-6 min-h-[400px]">
+          {Array.from({ length: 24 }).map((_, i) => (
+            <AnimeCardSkeleton key={`explore-skeleton-${i}`} />
+          ))}
+        </div>
       ) : error ? (
         <div className="text-center text-red-500 py-12">{error}</div>
       ) : searchResults.length > 0 ? (

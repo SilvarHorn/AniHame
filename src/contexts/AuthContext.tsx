@@ -1,11 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
-import { auth, db } from '../lib/firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
 export interface UserPreferences {
-  defaultServer: 'ani' | 'mal' | 'vidsrc';
+  defaultServer: 'mal' | 'vidsrc';
   defaultAudio: 'sub' | 'dub';
 }
 
@@ -17,11 +13,12 @@ export interface UserProfile {
   bio?: string;
   themeColor?: string;
   bgGradient?: string;
+  bgImage?: string;
+  bgOpacity?: number;
   preferences: UserPreferences;
 }
 
 interface AuthContextType {
-  currentUser: User | null;
   profile: UserProfile | null;
   loading: boolean;
   updatePreferences: (prefs: Partial<UserPreferences>) => Promise<void>;
@@ -29,20 +26,19 @@ interface AuthContextType {
 }
 
 const defaultPreferences: UserPreferences = {
-  defaultServer: 'ani',
+  defaultServer: 'mal',
   defaultAudio: 'sub',
 };
 
 const defaultProfile: UserProfile = {
   uid: 'local-user',
   email: null,
-  displayName: 'Guest',
+  displayName: 'User',
   photoURL: null,
   preferences: defaultPreferences
 };
 
 const AuthContext = createContext<AuthContextType>({
-  currentUser: null,
   profile: null,
   loading: true,
   updatePreferences: async () => {},
@@ -52,87 +48,52 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Load from local storage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('app_user_profile_data');
+      if (stored) {
+        setProfile(JSON.parse(stored));
+      } else {
+        setProfile(defaultProfile);
+      }
+    } catch (e) {
+      setProfile(defaultProfile);
+    }
+    setLoading(false);
+  }, []);
 
   // Sync basic info to local storage for quick access like Navbar
   useEffect(() => {
     if (profile) {
       try {
-        localStorage.setItem('app_user_profile', JSON.stringify(profile));
+        localStorage.setItem('app_user_profile_data', JSON.stringify(profile));
+        
         const navData = {
-          username: profile.displayName || (currentUser ? 'User' : 'Guest'),
+          username: profile.displayName || 'User',
           avatar: profile.photoURL || '',
           themeColor: profile.themeColor || '#8AD7D0',
-          bgGradient: profile.bgGradient || ''
+          bgGradient: profile.bgGradient || '',
+          bgImage: profile.bgImage || '',
+          bgOpacity: profile.bgOpacity ?? 100
         };
         localStorage.setItem('anime_profile', JSON.stringify(navData));
         window.dispatchEvent(new Event('profile-updated'));
       } catch (e) {}
-    } else {
-      localStorage.removeItem('app_user_profile');
     }
-  }, [profile, currentUser]);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      if (user) {
-        // Fetch or create profile
-        try {
-          const docRef = doc(db, 'users', user.uid);
-          const docSnap = await getDoc(docRef);
-          
-          if (docSnap.exists()) {
-            setProfile(docSnap.data() as UserProfile);
-          } else {
-            const newProfile: UserProfile = {
-              uid: user.uid,
-              email: user.email,
-              displayName: user.displayName || user.email?.split('@')[0] || 'User',
-              photoURL: user.photoURL,
-              preferences: defaultPreferences
-            };
-            await setDoc(docRef, newProfile);
-            setProfile(newProfile);
-          }
-        } catch (error: any) {
-          if (error?.message?.includes('offline')) {
-            console.error("Firebase is offline. Check database ID config.");
-          } else {
-            handleFirestoreError(error, OperationType.GET, 'users/' + user.uid);
-          }
-        }
-      } else {
-        // Guest mode fallback
-        setProfile(defaultProfile);
-      }
-      setLoading(false);
-    });
-
-    return unsubscribe;
-  }, []);
+  }, [profile]);
 
   const updateProfileData = async (data: Partial<UserProfile>) => {
-    if (!currentUser) return;
-    
     setProfile(prev => {
       const p = prev || defaultProfile;
       return { ...p, ...data };
     });
-    
-    try {
-      const docRef = doc(db, 'users', currentUser.uid);
-      await updateDoc(docRef, data);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, 'users/' + currentUser.uid);
-    }
   };
 
   const updatePreferences = async (newPrefs: Partial<UserPreferences>) => {
-    if (!currentUser) return;
-    
     setProfile(prev => {
       const p = prev || defaultProfile;
       const currentPrefs = p.preferences || defaultPreferences;
@@ -141,21 +102,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         preferences: { ...currentPrefs, ...newPrefs } 
       };
     });
-    
-    try {
-      const docRef = doc(db, 'users', currentUser.uid);
-      const currentPrefs = profile?.preferences || defaultPreferences;
-      await updateDoc(docRef, {
-        preferences: { ...currentPrefs, ...newPrefs }
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, 'users/' + currentUser.uid);
-    }
   };
 
   return (
     <AuthContext.Provider value={{ 
-      currentUser, 
       profile, 
       loading, 
       updatePreferences, 
